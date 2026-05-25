@@ -3,8 +3,7 @@ import DesignCard from "./components/DesignCard"
 import Header from "./components/Header"
 import LoadingArena from "./components/LoadingArena"
 
-const API_BASE = "https://uunez5c7jf.execute-api.us-east-1.amazonaws.com/prod"
-
+const API_BASE = import.meta.env.VITE_API_BASE || "https://uunez5c7jf.execute-api.us-east-1.amazonaws.com/prod"
 export default function App() {
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
