@@ -8,14 +8,11 @@ const GARMENT_EMOJI = {
   "bomber-jacket": "🧣",
 }
 
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
 const THRESHOLD = 50
 
 export default function DesignCard({ design, onVote, onOrder }) {
-  const [selectedSize, setSelectedSize] = useState("")
   const [ordering, setOrdering] = useState(false)
   const [voting, setVoting] = useState(false)
-  const [orderResult, setOrderResult] = useState(null)
 
   const {
     designId,
@@ -38,10 +35,10 @@ export default function DesignCard({ design, onVote, onOrder }) {
   }
 
   const handleOrder = async () => {
-    if (!selectedSize) return
     setOrdering(true)
-    const result = await onOrder(designId, selectedSize)
-    setOrderResult(result)
+    // On success onOrder redirects to Stripe Checkout (page navigates away);
+    // on error/sign-in it returns and we re-enable the button.
+    await onOrder(designId)
     setOrdering(false)
   }
 
@@ -91,42 +88,16 @@ export default function DesignCard({ design, onVote, onOrder }) {
         >
           {voting ? "..." : `▲ ${voteCount}`}
         </button>
+        <button
+          className={`preorder-btn ${ordering ? "loading" : ""}`}
+          onClick={handleOrder}
+          disabled={ordering || isFunded}
+        >
+          {ordering ? "..." : "Pre-order"}
+        </button>
         <span className="stat-divider" />
         <span className="order-stat">{orderCount} pre-orders</span>
       </div>
-
-      {!isFunded && (
-        <div className="order-section">
-          <div className="size-grid">
-            {SIZES.map((s) => (
-              <button
-                key={s}
-                className={`size-btn ${selectedSize === s ? "selected" : ""}`}
-                onClick={() => setSelectedSize(s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <button
-            className={`order-btn ${!selectedSize ? "disabled" : ""} ${ordering ? "loading" : ""}`}
-            onClick={handleOrder}
-            disabled={!selectedSize || ordering}
-          >
-            {ordering ? "Placing order..." : "Pre-Order — Fund This Drop"}
-          </button>
-          {orderResult?.creatorReward && (
-            <div className="creator-reward">
-              🏆 YOUR DESIGN FUNDED. YOUR PAIR IS FREE.
-            </div>
-          )}
-          {orderResult && !orderResult.creatorReward && (
-            <div className="order-confirm">
-              ✓ Order placed — {orderResult.ordersUntilFunded} more needed to fund
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
