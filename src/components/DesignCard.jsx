@@ -9,10 +9,13 @@ const GARMENT_EMOJI = {
 }
 
 const THRESHOLD = 50
+const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
 
 export default function DesignCard({ design, onVote, onOrder }) {
   const [ordering, setOrdering] = useState(false)
   const [voting, setVoting] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
 
   const {
     designId,
@@ -24,6 +27,8 @@ export default function DesignCard({ design, onVote, onOrder }) {
     rank,
     creatorId,
   } = design
+
+  const imageUrl = `${CF_BASE}/designs/${designId}/image.jpg`
 
   const fundingPercent = Math.min(100, Math.round((orderCount / THRESHOLD) * 100))
   const isFunded = status === "FUNDED"
@@ -44,6 +49,18 @@ export default function DesignCard({ design, onVote, onOrder }) {
 
   return (
     <div className={`design-card ${isFunded ? "funded" : ""}`}>
+
+      {!imgFailed && (
+        <div className={`card-img-wrap${imgLoaded ? " loaded" : ""}`}>
+          <img
+            src={imageUrl}
+            alt=""
+            className="card-img"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgFailed(true)}
+          />
+        </div>
+      )}
 
       <div className="card-rank">#{rank}</div>
 

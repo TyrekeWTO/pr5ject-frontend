@@ -441,6 +441,104 @@ html, body, #root {
 }
 .order-result-link:hover { color: var(--accent-dim); }
 
+/* ── SUBMIT SCREEN ──────────────────────────────────────────── */
+.submit-box {
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.submit-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.submit-optional {
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.submit-select {
+  cursor: pointer;
+  width: 100%;
+}
+
+.submit-select option {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+.file-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.file-picker-btn {
+  flex: 1;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.file-picker-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.file-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.file-clear:hover { color: var(--text-primary); }
+
+/* ── DESIGN CARD IMAGE ──────────────────────────────────────── */
+.card-img-wrap {
+  display: none;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.card-img-wrap.loaded {
+  display: block;
+}
+
+.card-img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
 @media (max-width: 640px) {
   .header-inner { padding: 0 1rem; }
   .main { padding: 2rem 1rem 4rem; }

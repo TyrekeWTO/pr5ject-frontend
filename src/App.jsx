@@ -4,6 +4,7 @@ import DesignCard from "./components/DesignCard"
 import Header from "./components/Header"
 import LoadingArena from "./components/LoadingArena"
 import AuthScreen from "./components/AuthScreen"
+import SubmitScreen from "./components/SubmitScreen"
 import OrderSuccess from "./components/OrderSuccess"
 import OrderCancel from "./components/OrderCancel"
 import { getCurrentUser, signOut, getIdToken } from "./auth/cognito"
@@ -18,6 +19,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [showSubmit, setShowSubmit] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [orderError, setOrderError] = useState(null)
 
@@ -118,6 +120,20 @@ export default function App() {
     }
   }
 
+  const handleSubmitOpen = () => {
+    if (!user) {
+      setPendingAction(() => () => setShowSubmit(true))
+      setShowAuth(true)
+      return
+    }
+    setShowSubmit(true)
+  }
+
+  const handleSubmitted = async () => {
+    setShowSubmit(false)
+    await fetchLeaderboard()
+  }
+
   const handleSignOut = () => {
     signOut()
     setUser(null)
@@ -142,7 +158,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header user={user} onSignOut={handleSignOut} onSignIn={() => setShowAuth(true)} />
+      <Header user={user} onSignOut={handleSignOut} onSignIn={() => setShowAuth(true)} onSubmit={handleSubmitOpen} />
       <main className="main">
         <div className="arena-header">
           <span className="arena-label">THE ARENA</span>
@@ -197,6 +213,12 @@ export default function App() {
         <AuthScreen
           onAuthed={handleAuthed}
           onDismiss={() => { setShowAuth(false); setPendingAction(null) }}
+        />
+      )}
+      {showSubmit && (
+        <SubmitScreen
+          onSubmitted={handleSubmitted}
+          onDismiss={() => setShowSubmit(false)}
         />
       )}
     </div>

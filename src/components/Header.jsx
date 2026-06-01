@@ -1,4 +1,4 @@
-export default function Header({ user, onSignOut }) {
+export default function Header({ user, onSignOut, onSubmit }) {
   return (
     <header className="header">
       <div className="header-inner">
@@ -8,7 +8,7 @@ export default function Header({ user, onSignOut }) {
         </div>
         <nav className="nav">
           <a href="#" className="nav-link active">Arena</a>
-          <a href="#" className="nav-link">Submit</a>
+          <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); onSubmit?.() }}>Submit</a>
           <a href="#" className="nav-link">Profile</a>
           {user && (
             <>
