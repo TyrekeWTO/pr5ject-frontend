@@ -14,6 +14,7 @@ export default function App() {
   const [designs, setDesigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [trends, setTrends] = useState(null)
 
   // Auth state
   const [user, setUser] = useState(null)
@@ -36,8 +37,20 @@ export default function App() {
       const res = await fetch(`${API_BASE}/leaderboard`)
       if (!res.ok) throw new Error(`API error: ${res.status}`)
       const data = await res.json()
-      setDesigns(data.leaderboard || [])
+      const leaderboard = data.leaderboard || []
+      setDesigns(leaderboard)
       setError(null)
+
+      if (leaderboard.length > 0) {
+        fetch(`${API_BASE}/ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feature: "trends", designs: leaderboard }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((t) => { if (t) setTrends(t) })
+          .catch(() => {})
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -206,6 +219,43 @@ export default function App() {
                 onOrder={handleOrder}
               />
             ))}
+          </div>
+        )}
+
+        {!loading && !error && trends && (
+          <div className="trends-section">
+            <span className="arena-label">AI INTEL</span>
+            <h3 className="trends-title">What's Moving</h3>
+            <div className="trends-grid">
+              {trends.creatorTip && (
+                <div className="trends-card">
+                  <div className="trends-card-label">Creator Tip</div>
+                  <div className="trends-card-value">{trends.creatorTip}</div>
+                </div>
+              )}
+              {Array.isArray(trends.topCombos) && trends.topCombos.length > 0 && (
+                <div className="trends-card">
+                  <div className="trends-card-label">Top Combos</div>
+                  <div className="trends-card-value">
+                    {trends.topCombos.map((combo, i) => (
+                      <div key={i} className="trends-combo">{combo}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {Array.isArray(trends.trending) && trends.trending.length > 0 && (
+                <div className="trends-card">
+                  <div className="trends-card-label">Trending Now</div>
+                  <div className="trends-card-value">
+                    {trends.trending.map((t, i) => (
+                      <div key={i} className="trends-combo">
+                        {typeof t === "string" ? t : (t.garmentType || t.name || JSON.stringify(t))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

@@ -539,6 +539,174 @@ html, body, #root {
   object-fit: cover;
 }
 
+/* ── AI ASSISTANT SECTION ──────────────────────────────────── */
+.ai-section {
+  border: 1px solid #2a2a2a;
+  background: #0d0d0d;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.ai-section-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.ai-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-text-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.ai-gen-btn {
+  background: var(--accent);
+  border: none;
+  color: #0a0a0a;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.ai-gen-btn:hover:not(:disabled) { opacity: 0.85; }
+.ai-gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ai-reasoning {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 10px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ── FEASIBILITY ───────────────────────────────────────────── */
+.feasibility-wrap {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.feasibility-wrap.high { border-color: var(--funded-green); background: rgba(0, 255, 136, 0.05); }
+.feasibility-wrap.medium { border-color: #e8c000; background: rgba(232, 192, 0, 0.05); }
+.feasibility-wrap.low { border-color: #ff8c00; background: rgba(255, 140, 0, 0.05); }
+.feasibility-wrap.impossible { border-color: #ff4444; background: rgba(255, 68, 68, 0.05); }
+
+.feasibility-level-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.feasibility-wrap.high .feasibility-level-badge { color: var(--funded-green); }
+.feasibility-wrap.medium .feasibility-level-badge { color: #e8c000; }
+.feasibility-wrap.low .feasibility-level-badge { color: #ff8c00; }
+.feasibility-wrap.impossible .feasibility-level-badge { color: #ff4444; }
+
+.feasibility-note {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* ── SUBMIT ACTIONS ────────────────────────────────────────── */
+.submit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.submit-actions .auth-btn { flex: 1; }
+
+.feasibility-btn {
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.feasibility-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.feasibility-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── TRENDS SECTION ────────────────────────────────────────── */
+.trends-section {
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+  padding-top: 3rem;
+}
+
+.trends-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  line-height: 0.95;
+  margin-bottom: 2rem;
+}
+
+.trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.trends-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  border-radius: 2px;
+}
+
+.trends-card-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.trends-card-value {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.trends-combo {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.trends-combo:last-child { border-bottom: none; }
+
 @media (max-width: 640px) {
   .header-inner { padding: 0 1rem; }
   .main { padding: 2rem 1rem 4rem; }

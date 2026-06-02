@@ -11,6 +11,15 @@ const GARMENT_TYPES = [
   "bomber-jacket",
 ]
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(",")[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function SubmitScreen({ onSubmitted, onDismiss }) {
   const [garmentType, setGarmentType] = useState(GARMENT_TYPES[0])
   const [color, setColor] = useState("")
@@ -20,6 +29,87 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
   const [loading, setLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState(null)
+
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiReasoning, setAiReasoning] = useState(null)
+
+  const [feasibility, setFeasibility] = useState(null)
+  const [feasibilityLoading, setFeasibilityLoading] = useState(false)
+
+  const handleAiAssist = async () => {
+    if (!aiPrompt.trim() || aiLoading) return
+    setAiLoading(true)
+    setAiReasoning(null)
+    try {
+      const token = await getIdToken()
+      const body = { feature: "assistant", prompt: aiPrompt.trim() }
+      if (imageFile) {
+        const imageBase64 = await fileToBase64(imageFile)
+        body.imageBase64 = imageBase64
+        body.imageType = imageFile.type
+      }
+      const res = await fetch(`${API_BASE}/ai`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error("AI call failed")
+      const data = await res.json()
+      if (data.garmentType && GARMENT_TYPES.includes(data.garmentType)) {
+        setGarmentType(data.garmentType)
+      }
+      const cfg = data.configuration
+      if (Array.isArray(cfg)) {
+        if (cfg[0] !== undefined) setColor(cfg[0])
+        if (cfg[1] !== undefined) setMaterial(cfg[1])
+        if (cfg[2] !== undefined) setFit(cfg[2])
+      } else if (cfg && typeof cfg === "object") {
+        if (cfg.color !== undefined) setColor(cfg.color)
+        if (cfg.material !== undefined) setMaterial(cfg.material)
+        if (cfg.fit !== undefined) setFit(cfg.fit)
+      }
+      if (data.reasoning) setAiReasoning(data.reasoning)
+    } catch (err) {
+      console.warn("AI assist failed:", err)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleFeasibility = async () => {
+    if (feasibilityLoading) return
+    setFeasibilityLoading(true)
+    setFeasibility(null)
+    try {
+      const token = await getIdToken()
+      const configuration = {}
+      if (color.trim()) configuration.color = color.trim()
+      if (material.trim()) configuration.material = material.trim()
+      if (fit.trim()) configuration.fit = fit.trim()
+      const res = await fetch(`${API_BASE}/ai`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          feature: "feasibility",
+          design: { garmentType, configuration },
+        }),
+      })
+      if (!res.ok) throw new Error("Feasibility check failed")
+      const data = await res.json()
+      setFeasibility(data)
+    } catch (err) {
+      console.warn("Feasibility check failed:", err)
+    } finally {
+      setFeasibilityLoading(false)
+    }
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -86,6 +176,10 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
     ? uploadingImage ? "UPLOADING IMAGE..." : "SUBMITTING..."
     : "SUBMIT DESIGN"
 
+  const feasibilityClass = feasibility?.level
+    ? { HIGH: "high", MEDIUM: "medium", LOW: "low", IMPOSSIBLE: "impossible" }[feasibility.level] || ""
+    : ""
+
   return (
     <div className="auth-overlay" onClick={(e) => e.target === e.currentTarget && onDismiss?.()}>
       <div className="auth-box submit-box">
@@ -99,6 +193,30 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
 
         <h2 className="auth-title">Drop a Design</h2>
         <p className="auth-sub">50 pre-orders funds it. Creator gets theirs free.</p>
+
+        <div className="ai-section">
+          <span className="ai-section-label">AI ASSISTANT</span>
+          <div className="ai-input-row">
+            <input
+              className="auth-input ai-text-input"
+              type="text"
+              placeholder="Describe your vision..."
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAiAssist()}
+            />
+            <button
+              className="ai-gen-btn"
+              onClick={handleAiAssist}
+              disabled={aiLoading || !aiPrompt.trim()}
+            >
+              {aiLoading ? "..." : "GENERATE"}
+            </button>
+          </div>
+          {aiReasoning && (
+            <p className="ai-reasoning">AI suggestion: {aiReasoning}</p>
+          )}
+        </div>
 
         <label className="submit-label">Garment type</label>
         <select
@@ -157,9 +275,27 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
           )}
         </div>
 
-        <button className="auth-btn" onClick={handleSubmit} disabled={loading}>
-          {btnLabel}
-        </button>
+        {feasibility && (
+          <div className={`feasibility-wrap ${feasibilityClass}`}>
+            <span className="feasibility-level-badge">{feasibility.level}</span>
+            {feasibility.suggestion && (
+              <p className="feasibility-note">{feasibility.suggestion}</p>
+            )}
+          </div>
+        )}
+
+        <div className="submit-actions">
+          <button className="auth-btn" onClick={handleSubmit} disabled={loading}>
+            {btnLabel}
+          </button>
+          <button
+            className="feasibility-btn"
+            onClick={handleFeasibility}
+            disabled={loading || feasibilityLoading}
+          >
+            {feasibilityLoading ? "CHECKING..." : "FEASIBILITY"}
+          </button>
+        </div>
 
         {error && <p className="auth-error">{error}</p>}
       </div>
