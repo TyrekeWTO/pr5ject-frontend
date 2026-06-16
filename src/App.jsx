@@ -18,6 +18,9 @@ import ProfilePage from "./components/ProfilePage"
 import AdminPanel from "./components/AdminPanel"
 import ComingSoon from "./components/ComingSoon"
 import DesignStudio from "./components/DesignStudio"
+import TermsPage from "./components/TermsPage"
+import PrivacyPage from "./components/PrivacyPage"
+import CreatorAgreementPage from "./components/CreatorAgreementPage"
 import { getCurrentUser, signOut, getIdToken } from "./auth/cognito"
 import { track } from "./utils/track"
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
@@ -87,10 +90,32 @@ export default function App() {
     fetchLeaderboard()
   }, [])
 
+  // Returns the first missing required legal doc, or null if all accepted.
+  const checkLegalGate = async () => {
+    try {
+      const token = await getIdToken()
+      const res = await fetch(`${API_BASE}/legal/status`, {
+        headers: { "Authorization": `Bearer ${token}` },
+      })
+      if (!res.ok) return null // fail open so a backend issue doesn't block users
+      const data = await res.json()
+      if (data.allRequired) return null
+      return data.missing?.[0] || null
+    } catch {
+      return null // fail open
+    }
+  }
+
   const handleOrder = async (designId) => {
     if (!user) {
       setPendingAction(() => () => handleOrder(designId))
       setShowAuth(true)
+      return
+    }
+
+    const missingDoc = await checkLegalGate()
+    if (missingDoc) {
+      window.location.assign(`/${missingDoc}?next=${encodeURIComponent(window.location.pathname)}`)
       return
     }
     setOrderError(null)
@@ -128,13 +153,20 @@ export default function App() {
     }
   }
 
-  const handleSubmitOpen = () => {
+  const handleSubmitOpen = async () => {
     track("submit_open")
     if (!user) {
       setPendingAction(() => () => setShowSubmit(true))
       setShowAuth(true)
       return
     }
+
+    const missingDoc = await checkLegalGate()
+    if (missingDoc) {
+      window.location.assign(`/${missingDoc}?next=${encodeURIComponent(window.location.pathname)}`)
+      return
+    }
+
     setShowSubmit(true)
   }
 
@@ -183,6 +215,9 @@ export default function App() {
   if (path === "/new-password") return <NewPasswordPage />
   if (path === "/profile") return <ProfilePage />
   if (path === "/studio") return <DesignStudio />
+  if (path === "/terms") return <TermsPage />
+  if (path === "/privacy") return <PrivacyPage />
+  if (path === "/creator-agreement") return <CreatorAgreementPage />
 
   if (!authChecked) return null
 

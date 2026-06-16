@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 const CF_BASE  = "https://d1wxtx6tyeb7i0.cloudfront.net"
-const ADMIN_KEY = "437918"
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || "437918"
 
 const GARMENT_OPTS = [
   { key: "star-shorts", label: "Star Shorts", colors: ["black", "pink", "sand", "olive"] },
@@ -366,6 +366,90 @@ function FundingSection() {
   )
 }
 
+// ── CHARGEBACK PACKAGER ────────────────────────────────────────────
+
+function ChargebackButton({ orderId }) {
+  const [loading,  setLoading]  = useState(false)
+  const [result,   setResult]   = useState(null)
+  const [error,    setError]    = useState(null)
+
+  const generate = async () => {
+    setLoading(true)
+    setResult(null)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/admin/chargeback?orderId=${encodeURIComponent(orderId)}&key=${ADMIN_KEY}`)
+      if (!res.ok) throw new Error(`${res.status}`)
+      const data = await res.json()
+      setResult(data)
+    } catch (err) {
+      setError(err.message || "Failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={generate}
+        disabled={loading}
+        style={{
+          background: "none",
+          border: "1px solid #333",
+          color: loading ? "#444" : "#e8ff00",
+          fontFamily: "'DM Mono', monospace",
+          fontSize: "0.55rem",
+          letterSpacing: "0.15em",
+          textTransform: "uppercase",
+          padding: "0.3rem 0.6rem",
+          cursor: loading ? "not-allowed" : "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {loading ? "..." : "Chargeback Package"}
+      </button>
+      {error && (
+        <span style={{ color: "#ff6666", fontSize: "0.6rem", marginLeft: "0.5rem" }}>Error: {error}</span>
+      )}
+      {result && (
+        <div style={{
+          marginTop: "0.75rem",
+          background: "#0d0d0d",
+          border: "1px solid #262626",
+          padding: "1rem",
+          fontSize: "0.65rem",
+          fontFamily: "'DM Mono', monospace",
+          color: "#aaa",
+          lineHeight: 1.8,
+        }}>
+          <div style={{ color: "#e8ff00", marginBottom: "0.5rem", fontSize: "0.6rem", letterSpacing: "0.2em" }}>EVIDENCE PACKAGE</div>
+          {[
+            ["Order ID",        result.orderId],
+            ["Customer Email",  result.customerEmail],
+            ["Signup Date",     result.customerSignupDate],
+            ["Order Date",      result.orderDate],
+            ["Amount",          result.orderAmount],
+            ["Design",          result.designName],
+            ["Garment",         result.garmentType],
+            ["Terms Accepted",  result.termsAccepted],
+            ["Terms IP",        result.termsAcceptedIP],
+            ["Fraud Score",     result.fraudScore],
+          ].map(([label, val]) => (
+            <div key={label} style={{ display: "flex", gap: "1rem" }}>
+              <span style={{ color: "#555", minWidth: 120 }}>{label}</span>
+              <span style={{ color: "#f0f0f0" }}>{String(val ?? "—")}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: "0.75rem", borderTop: "1px solid #1a1a1a", paddingTop: "0.75rem", color: "#ccc" }}>
+            {result.evidenceSummary}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── SECTION 4: ORDERS TABLE ────────────────────────────────────────
 
 function OrdersSection() {
@@ -377,7 +461,7 @@ function OrdersSection() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              {["Order ID", "Customer", "Design", "Item", "Amount", "Date", "Status"].map(h => (
+              {["Order ID", "Customer", "Design", "Item", "Amount", "Date", "Status", "Actions"].map(h => (
                 <th key={h} style={S.th}>{h}</th>
               ))}
             </tr>
@@ -387,7 +471,7 @@ function OrdersSection() {
               <tr key={o.id}
                 onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                style={{ transition: "background 0.1s" }}
+                style={{ transition: "background 0.1s", verticalAlign: "top" }}
               >
                 <td style={{ ...S.td, color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.65rem" }}>{o.id}</td>
                 <td style={{ ...S.td, color: "#f0f0f0" }}>{o.email}</td>
@@ -396,6 +480,9 @@ function OrdersSection() {
                 <td style={{ ...S.td, color: "#f0f0f0" }}>{o.amount}</td>
                 <td style={S.td}>{o.date}</td>
                 <td style={S.td}><StatusBadge status={o.status} /></td>
+                <td style={S.td}>
+                  <ChargebackButton orderId={o.id} />
+                </td>
               </tr>
             ))}
           </tbody>
