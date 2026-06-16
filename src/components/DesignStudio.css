@@ -576,6 +576,15 @@
 
 .ds-modal-cancel-btn:hover { border-color: #666; color: #aaa; }
 
+.ds-modal-tip {
+  color: #888;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  margin: 0.25rem 0 0;
+  line-height: 1.5;
+}
+
 .ds-modal-error {
   color: #ff4444;
   font-family: 'DM Mono', monospace;

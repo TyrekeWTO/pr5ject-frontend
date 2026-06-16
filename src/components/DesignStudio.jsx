@@ -7,6 +7,11 @@ const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
 
 const STYLE_CONTEXT = "Streetwear graphic design for acid-washed heavy cotton garments. Style: dark, gritty, high-contrast. Influences: Y2K chrome hardware, distressed textures, hand-script typography. Color palette: black, charcoal, faded pink, silver metallic. Output should be a flat graphic suitable for screen printing or embroidery. Transparent or white background."
 
+const GARMENT_TIPS = {
+  "star-shorts": "Best placement: front chest or center back",
+  "five-hoodie": "Hood and chest panel work best for bold graphics",
+}
+
 const GARMENTS = {
   "star-shorts": {
     name: "Star Shorts",
@@ -264,7 +269,7 @@ export default function DesignStudio() {
       const token = await getIdToken()
       const headers = { "Content-Type": "application/json" }
       if (token) headers["Authorization"] = `Bearer ${token}`
-      const res = await fetch(`${API_BASE}/ai`, {
+      const res = await fetch(`${API_BASE}/ai/generate`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -590,6 +595,9 @@ export default function DesignStudio() {
               disabled={aiLoading}
               autoFocus
             />
+            {GARMENT_TIPS[activeGarment] && (
+              <p className="ds-modal-tip">{GARMENT_TIPS[activeGarment]}</p>
+            )}
             {aiError && <p className="ds-modal-error">{aiError}</p>}
             <div className="ds-modal-actions">
               <button
