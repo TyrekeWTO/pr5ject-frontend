@@ -1,13 +1,39 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
-export async function track(event, props = {}) {
+function getSessionId() {
   try {
-    await fetch(`${API_BASE}/track`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, ...props, ts: Date.now() }),
-    })
+    let sid = sessionStorage.getItem("pr5ject_sid")
+    if (!sid) {
+      sid = Math.random().toString(36).slice(2) + Date.now().toString(36)
+      sessionStorage.setItem("pr5ject_sid", sid)
+    }
+    return sid
   } catch {
-    // silently ignore — 404s and network errors must never block UI
+    return ""
+  }
+}
+
+export function track(event, props = {}) {
+  try {
+    const payload = JSON.stringify({
+      event,
+      ...props,
+      sessionId: getSessionId(),
+      ts: Date.now(),
+    })
+    // Use sendBeacon when available — doesn't block page unload
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: "application/json" })
+      navigator.sendBeacon(`${API_BASE}/track`, blob)
+    } else {
+      fetch(`${API_BASE}/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {})
+    }
+  } catch {
+    // silently ignore — analytics must never break the UI
   }
 }

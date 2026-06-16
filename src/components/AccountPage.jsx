@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { getCurrentUser, associateSoftwareToken, verifySoftwareToken } from "../auth/cognito"
+import { track } from "../utils/track"
 
 const S = {
   page: { minHeight: "100vh", background: "#0a0a0a", padding: "4rem 1rem 6rem" },
@@ -30,6 +31,7 @@ export default function AccountPage() {
   const [startingSetup, setStartingSetup] = useState(false)
 
   useEffect(() => {
+    track("page_view", { page: "account" })
     getCurrentUser().then(u => {
       if (!u) { window.location.assign("/login"); return }
       setUser(u)
@@ -39,6 +41,7 @@ export default function AccountPage() {
   const startSetup = async () => {
     setTotpError(null)
     setStartingSetup(true)
+    track("2fa_setup_started")
     try {
       const secret = await associateSoftwareToken()
       setTotpSecret(secret)
@@ -58,6 +61,7 @@ export default function AccountPage() {
     setTotpLoading(true)
     try {
       await verifySoftwareToken(totpCode.trim())
+      track("2fa_enabled")
       setTotpDone(true)
       setTotpSecret(null)
     } catch (e) {

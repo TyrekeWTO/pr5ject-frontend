@@ -147,6 +147,7 @@ export default function App() {
         throw new Error("Order failed")
       }
       const data = await res.json()
+      track("checkout_started", { designId })
       // Hand off to Stripe Checkout (.assign performs the same redirect as
       // setting window.location.href, without tripping the lint immutability rule)
       window.location.assign(data.checkoutUrl)

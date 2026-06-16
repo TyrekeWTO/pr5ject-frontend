@@ -509,6 +509,165 @@ function CreatorsSection({ creators }) {
 
 // ── MAIN ADMIN PANEL ───────────────────────────────────────────────
 
+// ── FUNNEL SECTION ────────────────────────────────────────────────
+
+function FunnelBar({ label, count, pct, color = "#e8ff00" }) {
+  return (
+    <div style={{ marginBottom: "1.25rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.3rem" }}>
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "#aaa" }}>{label}</span>
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color }}>
+          {count.toLocaleString()} <span style={{ color: "#444" }}>({pct}%)</span>
+        </span>
+      </div>
+      <div style={{ height: "3px", background: "#1a1a1a", position: "relative" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: color, transition: "width 0.5s ease" }} />
+      </div>
+    </div>
+  )
+}
+
+function FunnelSection({ apiBase, adminKey }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [days, setDays] = useState(7)
+
+  const load = (d) => {
+    setLoading(true)
+    fetch(`${apiBase}/admin/funnel?key=${adminKey}&days=${d}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load(days) }, [])
+
+  const handleDays = (d) => { setDays(d); load(d) }
+
+  const purchase = data?.funnel?.purchase
+  const reg = data?.funnel?.registration
+  const daily = data?.daily || []
+  const maxDailyTotal = Math.max(1, ...daily.map(d =>
+    (d.preorder_click || 0) + (d.order_success || 0) + (d.signup_attempt || 0)
+  ))
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      {/* Period selector */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        {[7, 14, 30].map(d => (
+          <button key={d} onClick={() => handleDays(d)} style={{
+            background: days === d ? "#e8ff00" : "none",
+            border: "1px solid " + (days === d ? "#e8ff00" : "#333"),
+            color: days === d ? "#000" : "#555",
+            fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em",
+            padding: "0.3rem 0.75rem", cursor: "pointer",
+          }}>
+            {d}D
+          </button>
+        ))}
+        {loading && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#444", lineHeight: "1.8rem" }}>Loading…</span>}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+        {/* Purchase funnel */}
+        <div style={S.section}>
+          <span style={S.sectionLabel}>PURCHASE</span>
+          <p style={{ ...S.sectionTitle, margin: "0 0 1.25rem" }}>Conversion Funnel</p>
+          {purchase ? (
+            <>
+              {purchase.stages.map(s => (
+                <FunnelBar key={s.event} label={s.label} count={s.count} pct={s.pct}
+                  color={s.event === 'order_success' ? "#00ff88" : "#e8ff00"} />
+              ))}
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#444", marginTop: "1rem", lineHeight: 2 }}>
+                <div>Click → Start: <span style={{ color: "#888" }}>{purchase.click_to_start}%</span></div>
+                <div>Click → Complete: <span style={{ color: "#00ff88" }}>{purchase.click_to_success}%</span></div>
+                <div>Start → Complete: <span style={{ color: "#888" }}>{purchase.start_to_success}%</span></div>
+              </div>
+            </>
+          ) : <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#333" }}>No data yet.</div>}
+        </div>
+
+        {/* Registration funnel */}
+        <div style={S.section}>
+          <span style={S.sectionLabel}>REGISTRATION</span>
+          <p style={{ ...S.sectionTitle, margin: "0 0 1.25rem" }}>Sign-up Funnel</p>
+          {reg ? (
+            <>
+              {reg.stages.map(s => (
+                <FunnelBar key={s.event} label={s.label} count={s.count} pct={s.pct}
+                  color={s.event === 'login_success' ? "#00ff88" : "#e8ff00"} />
+              ))}
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#444", marginTop: "1rem", lineHeight: 2 }}>
+                <div>Signup → Verify: <span style={{ color: "#888" }}>{reg.signup_to_verify}%</span></div>
+                <div>Verify → Login: <span style={{ color: "#00ff88" }}>{reg.verify_to_login}%</span></div>
+              </div>
+            </>
+          ) : <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#333" }}>No data yet.</div>}
+        </div>
+      </div>
+
+      {/* Daily activity chart */}
+      {daily.length > 0 && (
+        <div style={S.section}>
+          <span style={S.sectionLabel}>ACTIVITY</span>
+          <p style={{ ...S.sectionTitle, margin: "0 0 1.25rem" }}>Daily Event Volume</p>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "120px", marginBottom: "6px" }}>
+            {daily.map((d, i) => {
+              const total = (d.preorder_click || 0) + (d.order_success || 0) + (d.signup_attempt || 0)
+              const pct = total / maxDailyTotal * 100
+              return (
+                <div key={i} title={`${d.date}: ${total} events`} style={{
+                  flex: 1, height: `${Math.max(pct, 2)}%`,
+                  background: i === daily.length - 1 ? "#00ff88" : "#e8ff00",
+                  opacity: 0.7, cursor: "default", minWidth: 0,
+                }} />
+              )
+            })}
+          </div>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {daily.map((d, i) => (
+              <div key={i} style={{ flex: 1, fontFamily: "'DM Mono', monospace", fontSize: "0.45rem", color: "#333", textAlign: "center", overflow: "hidden" }}>
+                {i % 3 === 0 ? d.date.slice(5) : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Event count table */}
+      {data?.counts && (
+        <div style={S.section}>
+          <span style={S.sectionLabel}>ALL EVENTS</span>
+          <p style={{ ...S.sectionTitle, margin: "0 0 1rem" }}>Event Counts ({data.period})</p>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Event</th>
+                  <th style={{ ...S.th, textAlign: "right" }}>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data.counts)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([ev, count]) => (
+                    <tr key={ev}>
+                      <td style={{ ...S.td, color: "#aaa" }}>{ev}</td>
+                      <td style={{ ...S.td, textAlign: "right", color: "#f0f0f0" }}>{count.toLocaleString()}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
+
 // ── FRAUD SECTION ─────────────────────────────────────────────────
 
 function FraudSection({ apiBase, adminKey }) {
@@ -881,6 +1040,7 @@ export default function AdminPanel() {
 
   const TABS = [
     { id: "dashboard", label: "OPS DASHBOARD" },
+    { id: "funnel",    label: "FUNNEL"        },
     { id: "fraud",     label: "FRAUD"         },
     { id: "sms",       label: "SMS"           },
     { id: "tools",     label: "TOOLS"         },
@@ -968,6 +1128,11 @@ export default function AdminPanel() {
             </>
           )}
         </main>
+      )}
+
+      {/* Funnel tab */}
+      {activeTab === "funnel" && (
+        <FunnelSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
       )}
 
       {/* Fraud tab */}

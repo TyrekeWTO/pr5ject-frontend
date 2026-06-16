@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { completeNewPasswordChallenge } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function NewPasswordPage() {
   const params = new URLSearchParams(window.location.search)
@@ -8,6 +9,8 @@ export default function NewPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "new_password" }) }, [])
 
   const handleSubmit = async () => {
     setError(null)

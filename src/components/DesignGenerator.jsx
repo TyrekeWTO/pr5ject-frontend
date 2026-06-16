@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getIdToken } from "../auth/cognito"
+import { track } from "../utils/track"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
@@ -8,6 +9,8 @@ export default function DesignGenerator() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "generate" }) }, [])
 
   const handleGenerate = async () => {
     if (!prompt.trim() || loading) return
