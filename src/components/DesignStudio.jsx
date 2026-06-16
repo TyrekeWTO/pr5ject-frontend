@@ -16,8 +16,8 @@ const GARMENTS = {
   "star-shorts": {
     name: "Star Shorts",
     views: {
-      front: { black: "/garments/shorts-front-black.jpg", pink: "/garments/shorts-back-pink.png", sand: null, olive: null },
-      back:  { black: "/garments/shorts-back-black.jpg",  pink: "/garments/shorts-back-pink.png", sand: null, olive: null },
+      front: { black: "/garments/shorts-front-black.jpg", pink: "/garments/shorts-back-pink.jpg", sand: null, olive: null },
+      back:  { black: "/garments/shorts-back-black.jpg",  pink: "/garments/shorts-back-pink.jpg", sand: null, olive: null },
     },
     colors: ["black", "pink", "sand", "olive"],
     colorSwatches: { black: "#1a1a1a", pink: "#e0457b", sand: "#c8b89a", olive: "#6b7c47" },
@@ -87,6 +87,10 @@ export default function DesignStudio() {
   const activeOverlay = activeThumbIdx !== null ? thumbnails[activeThumbIdx] : null
   const imgKey       = `${activeGarment}-${activeView}-${activeColor}`
   const imgSrc       = garment.views[activeView][activeColor]
+
+  if (activeGarment === "star-shorts" && activeView === "front" && activeColor === "black") {
+    console.log("[DesignStudio] shorts/front/black resolved src:", imgSrc)
+  }
 
   // Reset state when garment changes
   useEffect(() => {
