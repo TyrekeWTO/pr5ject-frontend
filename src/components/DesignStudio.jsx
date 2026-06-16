@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { getIdToken } from "../auth/cognito"
 import "./DesignStudio.css"
 
@@ -36,6 +36,20 @@ const GARMENTS = {
 }
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
+const GRAPHIC_TYPES = ["STAR", "FLAME", "LIGHTNING", "SKULL", "ABSTRACT", "TEXT ONLY", "CUSTOM"]
+const STYLE_OPTIONS = ["CHROME", "GRUNGE", "MINIMAL", "BOLD", "HAND-DRAWN", "GLITCH"]
+const LOADING_TIPS = [
+  "Nova Canvas is generating your design...",
+  "Creating streetwear-optimized graphic...",
+  "Applying PR5JECT style...",
+]
+
+const TOUR_STEPS = [
+  { label: "Pick your garment", target: "garment" },
+  { label: "Choose your colorway", target: "color" },
+  { label: "Describe your design and let AI build it", target: "ai" },
+  { label: "Or upload your own graphic", target: "upload" },
+]
 
 function parsePct(s) { return parseFloat(s) }
 
@@ -57,19 +71,27 @@ function dataURLToBlob(dataURL) {
   return new Blob([arr], { type: mime })
 }
 
+function buildPrompt(graphicType, customType, style, text) {
+  const graphic = graphicType === "CUSTOM" ? (customType.trim() || "graphic") : graphicType.toLowerCase()
+  const parts = [
+    `${(style || "").toLowerCase()} ${graphic} graphic`,
+    "high contrast",
+    "streetwear style",
+    "suitable for screen print",
+  ]
+  if (text.trim()) parts.push(text.trim())
+  return parts.join(", ")
+}
+
 export default function DesignStudio() {
   const [activeGarment, setActiveGarment] = useState("star-shorts")
   const [activeView, setActiveView]       = useState("front")
   const [activeColor, setActiveColor]     = useState("black")
   const [selectedSize, setSelectedSize]   = useState(null)
-  const [thumbnails, setThumbnails]       = useState([]) // { id, url, file }
+  const [thumbnails, setThumbnails]       = useState([])
   const [activeThumbIdx, setActiveThumbIdx] = useState(null)
   const [overlayBounds, setOverlayBounds] = useState(initBounds(GARMENTS["star-shorts"].overlayZone))
   const [tilt, setTilt]                   = useState({ x: 0, y: 0 })
-  const [aiModalOpen, setAiModalOpen]     = useState(false)
-  const [aiPrompt, setAiPrompt]           = useState("")
-  const [aiLoading, setAiLoading]         = useState(false)
-  const [aiError, setAiError]             = useState(null)
   const [submitting, setSubmitting]       = useState(false)
   const [submitError, setSubmitError]     = useState(null)
   const [toast, setToast]                 = useState(null)
@@ -81,12 +103,34 @@ export default function DesignStudio() {
   const [view360Playing, setView360Playing] = useState(false)
   const [view360FrameIdx, setView360FrameIdx] = useState(0)
 
-  const fileInputRef  = useRef(null)
-  const viewerRef     = useRef(null)
-  const cardRef       = useRef(null)
-  const garmentImgRef = useRef(null)
-  const resizingRef   = useRef(null)
-  const drag360Ref    = useRef(null)
+  // AI modal state
+  const [aiModalOpen, setAiModalOpen]           = useState(false)
+  const [aiStep, setAiStep]                     = useState(1)
+  const [aiGraphicType, setAiGraphicType]       = useState(null)
+  const [aiCustomType, setAiCustomType]         = useState("")
+  const [aiStyle, setAiStyle]                   = useState(null)
+  const [aiText, setAiText]                     = useState("")
+  const [aiAssembledPrompt, setAiAssembledPrompt] = useState("")
+  const [aiStylistLoading, setAiStylistLoading] = useState(false)
+  const [aiStylistTip, setAiStylistTip]         = useState(null)
+  const [aiLoading, setAiLoading]               = useState(false)
+  const [aiError, setAiError]                   = useState(null)
+  const [aiProgressPct, setAiProgressPct]       = useState(0)
+  const [aiTipIdx, setAiTipIdx]                 = useState(0)
+  const [aiRetryCountdown, setAiRetryCountdown] = useState(null)
+
+  // Onboarding tour
+  const [tourStep, setTourStep] = useState(null)
+
+  const fileInputRef   = useRef(null)
+  const viewerRef      = useRef(null)
+  const cardRef        = useRef(null)
+  const garmentImgRef  = useRef(null)
+  const resizingRef    = useRef(null)
+  const drag360Ref     = useRef(null)
+  const progressTimerRef = useRef(null)
+  const tipTimerRef      = useRef(null)
+  const retryTimerRef    = useRef(null)
 
   const GARMENT_360_KEY = { "star-shorts": "shorts", "five-hoodie": "hoodie" }
 
@@ -100,6 +144,26 @@ export default function DesignStudio() {
   if (activeGarment === "star-shorts" && activeView === "front" && activeColor === "black") {
     console.log("[DesignStudio] shorts/front/black resolved src:", imgSrc)
   }
+
+  // First-visit tour
+  useEffect(() => {
+    if (!localStorage.getItem("pr5ject_studio_tour_done")) {
+      const t = setTimeout(() => setTourStep(1), 800)
+      return () => clearTimeout(t)
+    }
+  }, [])
+
+  const dismissTour = useCallback(() => {
+    setTourStep(null)
+    localStorage.setItem("pr5ject_studio_tour_done", "1")
+  }, [])
+
+  const advanceTour = useCallback(() => {
+    setTourStep(s => {
+      if (s >= 4) { dismissTour(); return null }
+      return s + 1
+    })
+  }, [dismissTour])
 
   // Reset state when garment changes
   useEffect(() => {
@@ -122,6 +186,40 @@ export default function DesignStudio() {
     const t = setInterval(() => setView360FrameIdx(i => (i + 1) % view360Frames.length), 150)
     return () => clearInterval(t)
   }, [view360Playing, view360Frames.length])
+
+  // AI progress bar & rotating tips during generation
+  useEffect(() => {
+    if (!aiLoading) {
+      clearInterval(progressTimerRef.current)
+      clearInterval(tipTimerRef.current)
+      setAiProgressPct(0)
+      setAiTipIdx(0)
+      return
+    }
+    let pct = 0
+    progressTimerRef.current = setInterval(() => {
+      pct = Math.min(90, pct + 90 / (20 * 10))
+      setAiProgressPct(pct)
+    }, 100)
+    tipTimerRef.current = setInterval(() => {
+      setAiTipIdx(i => (i + 1) % LOADING_TIPS.length)
+    }, 3000)
+    return () => {
+      clearInterval(progressTimerRef.current)
+      clearInterval(tipTimerRef.current)
+    }
+  }, [aiLoading])
+
+  // Retry countdown timer
+  useEffect(() => {
+    if (aiRetryCountdown === null) return
+    if (aiRetryCountdown === 0) {
+      handleAiGenerate()
+      return
+    }
+    retryTimerRef.current = setTimeout(() => setAiRetryCountdown(c => c - 1), 1000)
+    return () => clearTimeout(retryTimerRef.current)
+  }, [aiRetryCountdown]) // eslint-disable-line
 
   // Global resize mouse listeners
   useEffect(() => {
@@ -278,7 +376,7 @@ export default function DesignStudio() {
     resizingRef.current = { dir, startX: e.clientX, startY: e.clientY, startBounds: { ...overlayBounds } }
   }
 
-  // Canvas snapshot (no html2canvas dep)
+  // Canvas snapshot
   const captureSnapshot = async () => {
     const W = 800, H = Math.round(W * 4 / 3)
     const canvas = document.createElement("canvas")
@@ -321,45 +419,92 @@ export default function DesignStudio() {
     a.click()
   }
 
-  // Open AI modal — redirect to /join if not logged in
+  // Open AI modal
   const handleOpenAiModal = async () => {
     const token = await getIdToken()
-    if (!token) {
-      window.location.href = "/join"
-      return
-    }
+    if (!token) { window.location.href = "/join"; return }
+    setAiStep(1)
+    setAiGraphicType(null)
+    setAiCustomType("")
+    setAiStyle(null)
+    setAiText("")
+    setAiAssembledPrompt("")
+    setAiStylistTip(null)
+    setAiStylistLoading(false)
     setAiError(null)
+    setAiRetryCountdown(null)
     setAiModalOpen(true)
+  }
+
+  // Move to preview step — assemble prompt + call stylist
+  const handleGoToPreview = async () => {
+    const assembled = buildPrompt(aiGraphicType, aiCustomType, aiStyle, aiText)
+    setAiAssembledPrompt(assembled)
+    setAiStylistTip(null)
+    setAiStep("preview")
+    // Fire stylist in background
+    callStylist(assembled)
+  }
+
+  // Stylist call
+  const callStylist = async (prompt) => {
+    setAiStylistLoading(true)
+    setAiStylistTip(null)
+    try {
+      const token = await getIdToken()
+      const res = await fetch(`${API_BASE}/ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": token },
+        body: JSON.stringify({ feature: "review_prompt", prompt, garment: activeGarment, color: activeColor }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.tip && data.improved_prompt) setAiStylistTip(data)
+      }
+    } catch { /* fail silently */ }
+    finally { setAiStylistLoading(false) }
   }
 
   // AI generate
   const handleAiGenerate = async () => {
-    if (!aiPrompt.trim() || aiLoading) return
+    const prompt = aiAssembledPrompt.trim()
+    if (!prompt || aiLoading) return
     setAiLoading(true)
     setAiError(null)
+    setAiRetryCountdown(null)
     try {
       const token = await getIdToken()
-      if (!token) {
-        window.location.href = "/join"
-        return
-      }
+      if (!token) { window.location.href = "/join"; return }
       const res = await fetch(`${API_BASE}/ai/generate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token,
-        },
+        headers: { "Content-Type": "application/json", "Authorization": token },
         body: JSON.stringify({
-          prompt: aiPrompt.trim(),
+          prompt,
           garment: activeGarment,
           color: activeColor,
           styleContext: STYLE_CONTEXT,
         }),
       })
-      if (!res.ok) throw new Error("AI generation failed")
       const data = await res.json()
+
+      if (!res.ok) {
+        const errType = data?.error || "unknown"
+        if (errType === "throttled") {
+          setAiError("Too many requests — wait 5 seconds and try again")
+          setAiRetryCountdown(5)
+        } else if (errType === "bedrock_auth") {
+          setAiError("AI generation is temporarily unavailable")
+        } else if (errType === "s3_error") {
+          setAiError("Something went wrong. Your prompt has been saved — try again")
+        } else {
+          setAiError("Something went wrong. Your prompt has been saved — try again")
+        }
+        return
+      }
+
       const url = data.imageUrl || data.url || data.image
-      if (!url) throw new Error("No image returned")
+      if (!url) { setAiError("No image returned — try again"); return }
+
       const entry = { id: `ai-${Date.now()}`, url, file: null }
       setThumbnails((prev) => {
         const next = prev.length >= 3 ? [...prev.slice(0, 2), entry] : [...prev, entry]
@@ -367,10 +512,9 @@ export default function DesignStudio() {
         return next
       })
       setAiModalOpen(false)
-      setAiPrompt("")
     } catch (err) {
       console.warn("AI generate:", err)
-      setAiError("Generation failed — try again")
+      setAiError("Something went wrong. Your prompt has been saved — try again")
     } finally {
       setAiLoading(false)
     }
@@ -410,7 +554,6 @@ export default function DesignStudio() {
       if (!designRes.ok) throw new Error("Design submission failed")
       const { designId } = await designRes.json()
 
-      // Upload snapshot
       try {
         const dataURL = await captureSnapshot()
         const blob    = dataURLToBlob(dataURL)
@@ -467,7 +610,6 @@ export default function DesignStudio() {
                   className="ds-card"
                   style={view360Active ? {} : { transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
                 >
-                  {/* Loading overlay */}
                   {view360Loading && (
                     <div className="ds-360-loading">
                       <span className="ds-spinner ds-spinner-yellow" />
@@ -475,7 +617,6 @@ export default function DesignStudio() {
                     </div>
                   )}
 
-                  {/* 360 frame viewer */}
                   {view360Active && (
                     <>
                       <img
@@ -485,17 +626,13 @@ export default function DesignStudio() {
                         draggable={false}
                       />
                       <div className="ds-360-controls">
-                        <button
-                          className="ds-360-play-btn"
-                          onClick={() => setView360Playing(p => !p)}
-                        >
+                        <button className="ds-360-play-btn" onClick={() => setView360Playing(p => !p)}>
                           {view360Playing ? "⏸ PAUSE" : "▶ PLAY"}
                         </button>
                       </div>
                     </>
                   )}
 
-                  {/* Static garment view */}
                   {!view360Loading && !view360Active && (
                     <>
                       {imgSrc && !imgErrors[imgKey] ? (
@@ -526,11 +663,7 @@ export default function DesignStudio() {
                         >
                           {activeOverlay ? (
                             <>
-                              <img
-                                src={activeOverlay.url}
-                                alt="Custom design"
-                                className="ds-overlay-img"
-                              />
+                              <img src={activeOverlay.url} alt="Custom design" className="ds-overlay-img" />
                               {["nw", "ne", "sw", "se"].map((dir) => (
                                 <div
                                   key={dir}
@@ -540,7 +673,10 @@ export default function DesignStudio() {
                               ))}
                             </>
                           ) : (
-                            <span className="ds-add-label">+ Add Your Design</span>
+                            <div className="ds-overlay-empty-state">
+                              <span className="ds-overlay-drop-title">DROP YOUR DESIGN HERE</span>
+                              <span className="ds-overlay-drop-sub">Upload an image or use AI DESIGN</span>
+                            </div>
                           )}
                         </div>
                       )}
@@ -554,8 +690,7 @@ export default function DesignStudio() {
           {/* ── CONTROLS ── */}
           <div className="ds-controls-col">
 
-            {/* Garment selector */}
-            <div className="ds-section">
+            <div className={`ds-section${tourStep === 1 ? " ds-tour-highlight" : ""}`} data-tour="garment">
               <span className="ds-section-label">GARMENT</span>
               <div className="ds-pill-group">
                 {Object.entries(GARMENTS).map(([key, g]) => (
@@ -570,7 +705,6 @@ export default function DesignStudio() {
               </div>
             </div>
 
-            {/* View toggle */}
             <div className="ds-section">
               <span className="ds-section-label">VIEW</span>
               <div className="ds-pill-group">
@@ -586,8 +720,7 @@ export default function DesignStudio() {
               </div>
             </div>
 
-            {/* Color swatches */}
-            <div className="ds-section">
+            <div className={`ds-section${tourStep === 2 ? " ds-tour-highlight" : ""}`} data-tour="color">
               <span className="ds-section-label">COLOR</span>
               <div className="ds-swatches">
                 {garment.colors.map((c) => (
@@ -603,9 +736,8 @@ export default function DesignStudio() {
               </div>
             </div>
 
-            {/* Upload zone — only when overlay view is active */}
             {showOverlay && (
-              <div className="ds-section">
+              <div className={`ds-section${tourStep === 4 ? " ds-tour-highlight" : ""}`} data-tour="upload">
                 <span className="ds-section-label">CUSTOMIZE THIS AREA</span>
                 <span className="ds-zone-hint">{overlayZone.label}</span>
                 <input
@@ -647,8 +779,7 @@ export default function DesignStudio() {
               </div>
             )}
 
-            {/* AI + Snapshot + 360 */}
-            <div className="ds-section ds-action-row">
+            <div className={`ds-section ds-action-row${tourStep === 3 ? " ds-tour-highlight" : ""}`} data-tour="ai">
               <button className="ds-ai-btn" onClick={handleOpenAiModal} disabled={view360Loading}>
                 ✦ AI DESIGN
               </button>
@@ -698,39 +829,221 @@ export default function DesignStudio() {
       {aiModalOpen && (
         <div
           className="ds-modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) { setAiModalOpen(false); setAiError(null) } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) { setAiModalOpen(false) } }}
         >
           <div className="ds-modal-box">
-            <button className="ds-modal-close" onClick={() => { setAiModalOpen(false); setAiError(null) }} disabled={aiLoading}>✕</button>
-            <span className="ds-section-label">AI DESIGN GENERATOR</span>
-            <h3 className="ds-modal-title">Describe Your Design</h3>
-            <p className="ds-modal-sub">
-              Tell the AI what graphic you want on your {garment.name}.
-            </p>
-            <input
-              className="ds-modal-input"
-              type="text"
-              placeholder="e.g. retro sun motif, black and yellow..."
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+            <button
+              className="ds-modal-close"
+              onClick={() => { if (!aiLoading) setAiModalOpen(false) }}
               disabled={aiLoading}
-              autoFocus
-            />
-            {GARMENT_TIPS[activeGarment] && (
-              <p className="ds-modal-tip">{GARMENT_TIPS[activeGarment]}</p>
+            >✕</button>
+
+            <span className="ds-section-label">AI DESIGN GENERATOR</span>
+            <h3 className="ds-modal-title">Build Your Design</h3>
+
+            {/* Step indicators */}
+            <div className="ds-step-indicators">
+              {[1, 2, 3].map(n => (
+                <div
+                  key={n}
+                  className={`ds-step-dot${aiStep === n || (aiStep === "preview" && n === 3) ? " active" : ""} ${
+                    (aiStep > n || aiStep === "preview") ? "done" : ""
+                  }`}
+                >
+                  {n}
+                </div>
+              ))}
+            </div>
+
+            {/* ── STEP 1: Graphic Type ── */}
+            {aiStep === 1 && (
+              <div className="ds-modal-step">
+                <span className="ds-step-label">GRAPHIC TYPE</span>
+                <div className="ds-option-grid">
+                  {GRAPHIC_TYPES.map(t => (
+                    <button
+                      key={t}
+                      className={`ds-option-btn${aiGraphicType === t ? " selected" : ""}`}
+                      onClick={() => setAiGraphicType(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                {aiGraphicType === "CUSTOM" && (
+                  <input
+                    className="ds-modal-input"
+                    type="text"
+                    placeholder="Describe your graphic..."
+                    value={aiCustomType}
+                    onChange={e => setAiCustomType(e.target.value)}
+                    autoFocus
+                  />
+                )}
+                <div className="ds-modal-nav">
+                  <button
+                    className="ds-modal-gen-btn"
+                    onClick={() => setAiStep(2)}
+                    disabled={!aiGraphicType || (aiGraphicType === "CUSTOM" && !aiCustomType.trim())}
+                  >
+                    NEXT →
+                  </button>
+                </div>
+              </div>
             )}
-            {aiError && <p className="ds-modal-error">{aiError}</p>}
-            <div className="ds-modal-actions">
-              <button
-                className="ds-modal-gen-btn"
-                onClick={handleAiGenerate}
-                disabled={aiLoading || !aiPrompt.trim()}
-              >
-                {aiLoading ? <><span className="ds-spinner" /> GENERATING...</> : "GENERATE"}
-              </button>
-              <button className="ds-modal-cancel-btn" onClick={() => { setAiModalOpen(false); setAiError(null) }} disabled={aiLoading}>
-                CANCEL
+
+            {/* ── STEP 2: Style ── */}
+            {aiStep === 2 && (
+              <div className="ds-modal-step">
+                <span className="ds-step-label">STYLE</span>
+                <div className="ds-option-grid">
+                  {STYLE_OPTIONS.map(s => (
+                    <button
+                      key={s}
+                      className={`ds-option-btn${aiStyle === s ? " selected" : ""}`}
+                      onClick={() => setAiStyle(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <div className="ds-modal-nav">
+                  <button className="ds-modal-cancel-btn" onClick={() => setAiStep(1)}>← BACK</button>
+                  <button
+                    className="ds-modal-gen-btn"
+                    onClick={() => setAiStep(3)}
+                    disabled={!aiStyle}
+                  >
+                    NEXT →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 3: Optional Text ── */}
+            {aiStep === 3 && (
+              <div className="ds-modal-step">
+                <span className="ds-step-label">ADD TEXT? <span className="ds-step-optional">(optional)</span></span>
+                <input
+                  className="ds-modal-input"
+                  type="text"
+                  placeholder="Any words or phrases?"
+                  value={aiText}
+                  onChange={e => setAiText(e.target.value)}
+                  autoFocus
+                />
+                <div className="ds-modal-nav">
+                  <button className="ds-modal-cancel-btn" onClick={() => setAiStep(2)}>← BACK</button>
+                  <button className="ds-modal-gen-btn" onClick={handleGoToPreview}>
+                    PREVIEW →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── PREVIEW ── */}
+            {aiStep === "preview" && (
+              <div className="ds-modal-step">
+                <span className="ds-step-label">YOUR PROMPT</span>
+                <textarea
+                  className="ds-assembled-prompt"
+                  value={aiAssembledPrompt}
+                  onChange={e => setAiAssembledPrompt(e.target.value)}
+                  disabled={aiLoading}
+                  rows={3}
+                />
+
+                {/* Stylist tip */}
+                {aiStylistLoading && (
+                  <div className="ds-stylist-loading">
+                    <span className="ds-spinner ds-spinner-yellow" />
+                    <span>Getting style tip...</span>
+                  </div>
+                )}
+                {!aiStylistLoading && aiStylistTip && (
+                  <div className="ds-stylist-card">
+                    <span className="ds-stylist-icon">✦</span>
+                    <p className="ds-stylist-tip">{aiStylistTip.tip}</p>
+                    <div className="ds-stylist-actions">
+                      <button
+                        className="ds-stylist-use-btn"
+                        onClick={() => {
+                          setAiAssembledPrompt(aiStylistTip.improved_prompt)
+                          setAiStylistTip(null)
+                        }}
+                        disabled={aiLoading}
+                      >
+                        USE SUGGESTED PROMPT
+                      </button>
+                      <button
+                        className="ds-stylist-keep-btn"
+                        onClick={() => setAiStylistTip(null)}
+                        disabled={aiLoading}
+                      >
+                        KEEP MINE
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {aiError && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">{aiError}</p>
+                    {aiRetryCountdown !== null && (
+                      <p className="ds-retry-countdown">
+                        {aiRetryCountdown > 0
+                          ? `Auto-retry in ${aiRetryCountdown}s...`
+                          : "Retrying..."}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Progress bar */}
+                {aiLoading && (
+                  <div className="ds-progress-wrap">
+                    <div className="ds-progress-bar-track">
+                      <div
+                        className="ds-progress-bar-fill"
+                        style={{ width: `${aiProgressPct}%` }}
+                      />
+                    </div>
+                    <p className="ds-modal-loading-tip">{LOADING_TIPS[aiTipIdx]}</p>
+                  </div>
+                )}
+
+                <div className="ds-modal-nav">
+                  <button
+                    className="ds-modal-cancel-btn"
+                    onClick={() => setAiStep(3)}
+                    disabled={aiLoading}
+                  >
+                    ← BACK
+                  </button>
+                  <button
+                    className="ds-modal-gen-btn"
+                    onClick={handleAiGenerate}
+                    disabled={aiLoading || !aiAssembledPrompt.trim() || aiRetryCountdown !== null}
+                  >
+                    {aiLoading ? <><span className="ds-spinner" /> GENERATING...</> : "GENERATE"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ONBOARDING TOUR ── */}
+      {tourStep !== null && (
+        <div className="ds-tour-overlay">
+          <div className={`ds-tour-tooltip ds-tour-step-${tourStep}`}>
+            <p className="ds-tour-msg">{TOUR_STEPS[tourStep - 1]?.label}</p>
+            <div className="ds-tour-actions">
+              <button className="ds-tour-skip" onClick={dismissTour}>SKIP</button>
+              <button className="ds-tour-next" onClick={advanceTour}>
+                {tourStep < 4 ? "NEXT →" : "GOT IT"}
               </button>
             </div>
           </div>
