@@ -658,12 +658,63 @@ export default function AdminPanel() {
     if (activeTab !== "dashboard") return
     setDashLoading(true)
     setDashError(null)
-    fetch(`${API_BASE}/dashboard?adminKey=${ADMIN_KEY}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Dashboard API returned ${r.status}`)
-        return r.json()
+    const key = ADMIN_KEY
+
+    Promise.all([
+      fetch(`${API_BASE}/admin/snapshot?key=${key}`).then(r => r.ok ? r.json() : null),
+      fetch(`${API_BASE}/admin/cashflow?key=${key}`).then(r => r.ok ? r.json() : null),
+      fetch(`${API_BASE}/admin/funding?key=${key}`).then(r => r.ok ? r.json() : null),
+      fetch(`${API_BASE}/admin/orders?key=${key}&page=1`).then(r => r.ok ? r.json() : null),
+      fetch(`${API_BASE}/admin/creators?key=${key}`).then(r => r.ok ? r.json() : null),
+    ])
+      .then(([snap, cf, fund, orders, creators]) => {
+        const snapshot = snap ? {
+          ordersToday:    snap.today?.orders ?? 0,
+          ordersDelta:    (snap.today?.orders ?? 0) - (snap.yesterday?.orders ?? 0),
+          revenueToday:   snap.today?.revenue ?? 0,
+          revenueDelta:   (snap.today?.revenue ?? 0) - (snap.yesterday?.revenue ?? 0),
+          signupsToday:   snap.today?.signups ?? 0,
+          activeDesigns:  0,
+          totalPreorders: snap.today?.orders ?? 0,
+          activeCreators: 0,
+          fundedDesigns:  0,
+        } : null
+
+        const cashFlow = cf?.days || []
+
+        const funding = (fund?.campaigns || []).map(c => ({
+          id:       c.id,
+          name:     c.garment,
+          creator:  c.creator,
+          garment:  c.garment,
+          colorway: c.colorway,
+          orders:   c.orders,
+          goal:     c.goal,
+        }))
+
+        const ordersOut = (orders?.orders || []).map(o => ({
+          id:       o.orderId,
+          customer: o.userId.slice(0, 8),
+          design:   o.designId.slice(0, 8),
+          item:     o.garmentType,
+          amount:   o.amount,
+          date:     o.createdAt,
+          status:   o.status.toLowerCase(),
+        }))
+
+        const creatorsOut = (creators?.creators || []).map(c => ({
+          handle:      c.username,
+          name:        c.username,
+          submissions: c.designsSubmitted,
+          funded:      0,
+          orders:      c.totalSales,
+          earnings:    c.earnings,
+          joined:      c.joinedDate,
+          status:      c.status,
+        }))
+
+        setDashData({ snapshot, cashFlow, funding, orders: ordersOut, creators: creatorsOut })
       })
-      .then((data) => setDashData(data))
       .catch((err) => setDashError(err.message || "Failed to load dashboard"))
       .finally(() => setDashLoading(false))
   }, [activeTab])
