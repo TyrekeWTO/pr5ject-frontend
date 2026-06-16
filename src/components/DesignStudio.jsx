@@ -74,12 +74,21 @@ export default function DesignStudio() {
   const [submitError, setSubmitError]     = useState(null)
   const [toast, setToast]                 = useState(null)
   const [imgErrors, setImgErrors]         = useState({})
+  const [view360Active, setView360Active] = useState(false)
+  const [view360Frames, setView360Frames] = useState([])
+  const [view360Loading, setView360Loading] = useState(false)
+  const [view360Error, setView360Error]   = useState(null)
+  const [view360Playing, setView360Playing] = useState(false)
+  const [view360FrameIdx, setView360FrameIdx] = useState(0)
 
-  const fileInputRef = useRef(null)
-  const viewerRef    = useRef(null)
-  const cardRef      = useRef(null)
+  const fileInputRef  = useRef(null)
+  const viewerRef     = useRef(null)
+  const cardRef       = useRef(null)
   const garmentImgRef = useRef(null)
-  const resizingRef  = useRef(null)
+  const resizingRef   = useRef(null)
+  const drag360Ref    = useRef(null)
+
+  const GARMENT_360_KEY = { "star-shorts": "shorts", "five-hoodie": "hoodie" }
 
   const garment      = GARMENTS[activeGarment]
   const overlayZone  = garment.overlayZone
@@ -106,6 +115,13 @@ export default function DesignStudio() {
     const t = setTimeout(() => setToast(null), 3500)
     return () => clearTimeout(t)
   }, [toast])
+
+  // 360 frame loop
+  useEffect(() => {
+    if (!view360Playing || view360Frames.length === 0) return
+    const t = setInterval(() => setView360FrameIdx(i => (i + 1) % view360Frames.length), 150)
+    return () => clearInterval(t)
+  }, [view360Playing, view360Frames.length])
 
   // Global resize mouse listeners
   useEffect(() => {
@@ -173,6 +189,58 @@ export default function DesignStudio() {
     })
   }
   const handleTouchEnd = () => setTilt({ x: 0, y: 0 })
+
+  // 360 view
+  const handle360View = async () => {
+    const token = await getIdToken()
+    if (!token) { window.location.href = "/join"; return }
+    setView360Loading(true)
+    setView360Error(null)
+    try {
+      const res = await fetch(`${API_BASE}/studio/360`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": token },
+        body: JSON.stringify({ garment: GARMENT_360_KEY[activeGarment], color: activeColor }),
+      })
+      if (!res.ok) throw new Error("generation failed")
+      const data = await res.json()
+      if (!data.frames?.length) throw new Error("no frames returned")
+      setView360Frames(data.frames)
+      setView360FrameIdx(0)
+      setView360Playing(true)
+      setView360Active(true)
+    } catch (err) {
+      console.warn("360:", err)
+      setView360Error("360° view unavailable")
+    } finally {
+      setView360Loading(false)
+    }
+  }
+
+  const exit360 = () => {
+    setView360Active(false)
+    setView360Frames([])
+    setView360Playing(false)
+    setView360FrameIdx(0)
+    setView360Error(null)
+    drag360Ref.current = null
+  }
+
+  const handle360DragStart = (e) => {
+    if (!view360Active || view360Frames.length === 0) return
+    setView360Playing(false)
+    drag360Ref.current = { startX: e.clientX, startFrame: view360FrameIdx }
+  }
+
+  const handle360DragMove = (e) => {
+    if (!drag360Ref.current) return
+    const dx   = e.clientX - drag360Ref.current.startX
+    const step = Math.round(dx / 40)
+    const n    = view360Frames.length
+    setView360FrameIdx(((drag360Ref.current.startFrame + step) % n + n) % n)
+  }
+
+  const handle360DragEnd = () => { drag360Ref.current = null }
 
   // File upload
   const handleFileChange = (e) => {
@@ -386,62 +454,97 @@ export default function DesignStudio() {
             <div
               ref={viewerRef}
               className="ds-perspective"
-              onMouseMove={handleViewerMouseMove}
-              onMouseLeave={handleViewerMouseLeave}
+              onMouseMove={view360Active ? handle360DragMove : handleViewerMouseMove}
+              onMouseLeave={view360Active ? handle360DragEnd : handleViewerMouseLeave}
+              onMouseDown={view360Active ? handle360DragStart : undefined}
+              onMouseUp={view360Active ? handle360DragEnd : undefined}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <div className="ds-card-float">
+              <div className={`ds-card-float${view360Active || view360Loading ? " paused" : ""}`}>
                 <div
                   ref={cardRef}
                   className="ds-card"
-                  style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+                  style={view360Active ? {} : { transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
                 >
-                  {imgSrc && !imgErrors[imgKey] ? (
-                    <img
-                      ref={garmentImgRef}
-                      key={imgKey}
-                      src={imgSrc}
-                      alt={garment.name}
-                      className="ds-garment-img"
-                      onError={() => setImgErrors((p) => ({ ...p, [imgKey]: true }))}
-                    />
-                  ) : (
-                    <div
-                      className="ds-placeholder"
-                      style={{ backgroundColor: garment.colorSwatches[activeColor] || "#1a1a1a" }}
-                    >
-                      <span className="ds-placeholder-text">
-                        {garment.name} — PHOTO COMING SOON
-                      </span>
+                  {/* Loading overlay */}
+                  {view360Loading && (
+                    <div className="ds-360-loading">
+                      <span className="ds-spinner ds-spinner-yellow" />
+                      <span className="ds-360-loading-text">Generating 360° view... (~45s)</span>
                     </div>
                   )}
 
-                  {showOverlay && (
-                    <div
-                      className={`ds-overlay-zone${activeOverlay ? " has-image" : " empty"}`}
-                      style={overlayStyle}
-                      onClick={!activeOverlay ? () => fileInputRef.current?.click() : undefined}
-                    >
-                      {activeOverlay ? (
-                        <>
-                          <img
-                            src={activeOverlay.url}
-                            alt="Custom design"
-                            className="ds-overlay-img"
-                          />
-                          {["nw", "ne", "sw", "se"].map((dir) => (
-                            <div
-                              key={dir}
-                              className={`ds-resize-handle ds-handle-${dir}`}
-                              onMouseDown={(e) => handleResizeStart(e, dir)}
-                            />
-                          ))}
-                        </>
+                  {/* 360 frame viewer */}
+                  {view360Active && (
+                    <>
+                      <img
+                        src={view360Frames[view360FrameIdx]}
+                        alt={`360° frame ${view360FrameIdx}`}
+                        className="ds-garment-img"
+                        draggable={false}
+                      />
+                      <div className="ds-360-controls">
+                        <button
+                          className="ds-360-play-btn"
+                          onClick={() => setView360Playing(p => !p)}
+                        >
+                          {view360Playing ? "⏸ PAUSE" : "▶ PLAY"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Static garment view */}
+                  {!view360Loading && !view360Active && (
+                    <>
+                      {imgSrc && !imgErrors[imgKey] ? (
+                        <img
+                          ref={garmentImgRef}
+                          key={imgKey}
+                          src={imgSrc}
+                          alt={garment.name}
+                          className="ds-garment-img"
+                          onError={() => setImgErrors((p) => ({ ...p, [imgKey]: true }))}
+                        />
                       ) : (
-                        <span className="ds-add-label">+ Add Your Design</span>
+                        <div
+                          className="ds-placeholder"
+                          style={{ backgroundColor: garment.colorSwatches[activeColor] || "#1a1a1a" }}
+                        >
+                          <span className="ds-placeholder-text">
+                            {garment.name} — PHOTO COMING SOON
+                          </span>
+                        </div>
                       )}
-                    </div>
+
+                      {showOverlay && (
+                        <div
+                          className={`ds-overlay-zone${activeOverlay ? " has-image" : " empty"}`}
+                          style={overlayStyle}
+                          onClick={!activeOverlay ? () => fileInputRef.current?.click() : undefined}
+                        >
+                          {activeOverlay ? (
+                            <>
+                              <img
+                                src={activeOverlay.url}
+                                alt="Custom design"
+                                className="ds-overlay-img"
+                              />
+                              {["nw", "ne", "sw", "se"].map((dir) => (
+                                <div
+                                  key={dir}
+                                  className={`ds-resize-handle ds-handle-${dir}`}
+                                  onMouseDown={(e) => handleResizeStart(e, dir)}
+                                />
+                              ))}
+                            </>
+                          ) : (
+                            <span className="ds-add-label">+ Add Your Design</span>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -544,16 +647,26 @@ export default function DesignStudio() {
               </div>
             )}
 
-            {/* AI + Snapshot */}
+            {/* AI + Snapshot + 360 */}
             <div className="ds-section ds-action-row">
-              <button className="ds-ai-btn" onClick={handleOpenAiModal}>
+              <button className="ds-ai-btn" onClick={handleOpenAiModal} disabled={view360Loading}>
                 ✦ AI DESIGN
               </button>
-              <button className="ds-snapshot-btn" onClick={handleSnapshot}>
+              <button className="ds-snapshot-btn" onClick={handleSnapshot} disabled={view360Active || view360Loading}>
                 SNAPSHOT
+              </button>
+              <button
+                className={`ds-360-btn${view360Active ? " active" : ""}`}
+                onClick={view360Active ? exit360 : handle360View}
+                disabled={view360Loading}
+              >
+                {view360Loading
+                  ? <><span className="ds-spinner ds-spinner-dark" /> GEN...</>
+                  : view360Active ? "EXIT 360" : "360° VIEW"}
               </button>
             </div>
 
+            {view360Error && <div className="ds-error">{view360Error}</div>}
             {submitError && <div className="ds-error">{submitError}</div>}
           </div>
         </div>
