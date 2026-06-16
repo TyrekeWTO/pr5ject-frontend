@@ -15,11 +15,15 @@ const userPool = new CognitoUserPool(poolData)
 // Sign up with email — triggers email verification code.
 // If `password` is omitted, a random one is generated and stashed for the
 // passwordless email-OTP flow (used by AuthScreen).
-export function signUp(email, password) {
+// `phone` is optional — if provided, stored as Cognito phone_number attribute.
+export function signUp(email, password, phone = null) {
   return new Promise((resolve, reject) => {
     const attributes = [
       new CognitoUserAttribute({ Name: "email", Value: email }),
     ]
+    if (phone) {
+      attributes.push(new CognitoUserAttribute({ Name: "phone_number", Value: phone }))
+    }
     const isGenerated = !password
     const finalPassword = password || `Pr5${Math.random().toString(36).slice(2)}!A`
     userPool.signUp(email, finalPassword, attributes, null, (err, result) => {

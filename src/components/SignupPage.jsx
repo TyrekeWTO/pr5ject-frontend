@@ -2,15 +2,24 @@ import { useState, useEffect } from "react"
 import { signUp } from "../auth/cognito"
 import { track } from "../utils/track"
 
+const US_PHONE_RE = /^\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/
+
+function normalizePhone(raw) {
+  const digits = raw.replace(/\D/g, "")
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
+  return null
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [phone, setPhone] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     track("page_view", { page: "signup" })
-    // Persist referral code from URL for post-verification registration
     const ref = new URLSearchParams(window.location.search).get("ref")
     if (ref) sessionStorage.setItem("pr5ject_ref_code", ref.toUpperCase())
   }, [])
@@ -26,10 +35,20 @@ export default function SignupPage() {
       setError("Password must be at least 8 characters")
       return
     }
+
+    let normalizedPhone = null
+    if (phone.trim()) {
+      normalizedPhone = normalizePhone(phone.trim())
+      if (!normalizedPhone) {
+        setError("Enter a valid US phone number (e.g. 555-123-4567)")
+        return
+      }
+    }
+
     track("signup_attempt")
     setLoading(true)
     try {
-      await signUp(trimmed, password)
+      await signUp(trimmed, password, normalizedPhone)
       track("signup_success")
       window.location.assign(`/verify?email=${encodeURIComponent(trimmed)}`)
     } catch (err) {
@@ -68,6 +87,22 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSignup()}
           />
+
+          <label style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#555", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.25rem", display: "block" }}>
+            Phone (optional) — get VIP early access alerts
+          </label>
+          <input
+            className="auth-input"
+            type="tel"
+            placeholder="555-123-4567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSignup()}
+          />
+          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#444", marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
+            Max 2 texts/month. Never spam.
+          </p>
+
           <button className="auth-btn" onClick={handleSignup} disabled={loading}>
             {loading ? "SIGNING UP..." : "SIGN UP"}
           </button>

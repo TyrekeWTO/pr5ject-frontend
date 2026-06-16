@@ -509,6 +509,121 @@ function CreatorsSection({ creators }) {
 
 // ── MAIN ADMIN PANEL ───────────────────────────────────────────────
 
+// ── SMS ADMIN SECTION ─────────────────────────────────────────────
+
+const SMS_TRIGGERS = [
+  { id: "campaign_launch", label: "New campaign launch" },
+  { id: "campaign_50pct",  label: "Campaign hits 50% funded" },
+  { id: "campaign_24h",    label: "24 hours left on campaign" },
+  { id: "puzzle_drop",     label: "Puzzle clue drop" },
+]
+
+function SmsAdminSection({ apiBase, adminKey }) {
+  const [testPhone, setTestPhone] = useState("")
+  const [testStatus, setTestStatus] = useState(null)
+  const [smsCount, setSmsCount] = useState(null)
+  const [toggles, setToggles] = useState({})
+
+  const fetchStats = async () => {
+    try {
+      const r = await fetch(`${apiBase}/admin/sms/stats?key=${adminKey}`)
+      if (r.ok) { const d = await r.json(); setSmsCount(d.sentThisMonth) }
+    } catch {}
+  }
+
+  const sendTest = async () => {
+    if (!testPhone.trim()) return
+    setTestStatus("sending...")
+    try {
+      const r = await fetch(`${apiBase}/admin/sms/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminKey, phone: testPhone.trim() }),
+      })
+      const d = await r.json()
+      setTestStatus(r.ok ? "Sent!" : `Error: ${d.error}`)
+    } catch (e) {
+      setTestStatus(`Error: ${e.message}`)
+    }
+  }
+
+  const toggleTrigger = async (triggerId, enabled) => {
+    setToggles(t => ({ ...t, [triggerId]: enabled }))
+    try {
+      await fetch(`${apiBase}/admin/sms/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminKey, trigger: triggerId, enabled }),
+      })
+    } catch {}
+  }
+
+  return (
+    <main style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <span style={S.sectionLabel}>SMS CONTROLS</span>
+        <p style={S.sectionTitle}>VIP SMS Triggers</p>
+        {SMS_TRIGGERS.map(t => (
+          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 0", borderBottom: "1px solid #1a1a1a" }}>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#aaa" }}>{t.label}</span>
+            <button
+              onClick={() => toggleTrigger(t.id, !(toggles[t.id] ?? true))}
+              style={{
+                background: "none",
+                border: `1px solid ${(toggles[t.id] ?? true) ? "#00ff88" : "#333"}`,
+                color: (toggles[t.id] ?? true) ? "#00ff88" : "#555",
+                fontFamily: "'DM Mono', monospace",
+                fontSize: "0.55rem",
+                letterSpacing: "0.15em",
+                padding: "0.25rem 0.75rem",
+                cursor: "pointer",
+              }}
+            >
+              {(toggles[t.id] ?? true) ? "ON" : "OFF"}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={S.section}>
+        <span style={S.sectionLabel}>TEST SMS</span>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <input
+            type="tel"
+            placeholder="+15551234567"
+            value={testPhone}
+            onChange={e => setTestPhone(e.target.value)}
+            style={{ flex: 1, background: "#141414", border: "1px solid #333", color: "#f0f0f0", fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", padding: "0.5rem 0.75rem", outline: "none" }}
+          />
+          <button
+            onClick={sendTest}
+            style={{ background: "#e8ff00", border: "none", color: "#000", fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", letterSpacing: "0.15em", padding: "0.5rem 1rem", cursor: "pointer" }}
+          >
+            SEND TEST
+          </button>
+        </div>
+        {testStatus && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: testStatus === "Sent!" ? "#00ff88" : "#ff6666" }}>{testStatus}</div>}
+      </div>
+
+      <div style={S.section}>
+        <span style={S.sectionLabel}>USAGE</span>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.5rem", color: "#f0f0f0", letterSpacing: "0.05em" }}>
+            {smsCount ?? "—"}
+          </div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#555" }}>SMS sent this month</div>
+          <button onClick={fetchStats} style={{ marginLeft: "auto", background: "none", border: "1px solid #333", color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em", padding: "0.3rem 0.75rem", cursor: "pointer" }}>
+            REFRESH
+          </button>
+        </div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#333", marginTop: "0.5rem" }}>
+          Estimated cost: ~$0.00645/SMS in US
+        </div>
+      </div>
+    </main>
+  )
+}
+
 export default function AdminPanel() {
   const [activeTab, setActiveTab]     = useState("dashboard")
   const [open, setOpen]               = useState(null)
@@ -612,6 +727,7 @@ export default function AdminPanel() {
 
   const TABS = [
     { id: "dashboard", label: "OPS DASHBOARD" },
+    { id: "sms",       label: "SMS"           },
     { id: "tools",     label: "TOOLS"         },
   ]
 
@@ -697,6 +813,11 @@ export default function AdminPanel() {
             </>
           )}
         </main>
+      )}
+
+      {/* SMS tab */}
+      {activeTab === "sms" && (
+        <SmsAdminSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
       )}
 
       {/* Tools tab (existing functionality) */}
