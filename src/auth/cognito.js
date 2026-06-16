@@ -46,6 +46,9 @@ export function confirmSignUp(email, code) {
   })
 }
 
+// Holds the CognitoUser object when a SOFTWARE_TOKEN_MFA challenge is pending.
+let _pendingMfaUser = null
+
 // Sign in after confirmation. If `password` is omitted, falls back to the
 // stashed password from the passwordless email-OTP flow (AuthScreen).
 export function signIn(email, password) {
@@ -63,11 +66,58 @@ export function signIn(email, password) {
       },
       onFailure: (err) => reject(err),
       newPasswordRequired: () => {
-        // Stash the temporary password so completeNewPasswordChallenge can
-        // re-authenticate and apply the challenge.
         sessionStorage.setItem(`pw_${email}`, finalPassword)
         resolve({ challengeName: "NEW_PASSWORD_REQUIRED" })
       },
+      totpRequired: () => {
+        _pendingMfaUser = user
+        resolve({ challengeName: "SOFTWARE_TOKEN_MFA" })
+      },
+    })
+  })
+}
+
+// Submit a TOTP code in response to a SOFTWARE_TOKEN_MFA challenge during login.
+export function respondToTotpChallenge(code) {
+  return new Promise((resolve, reject) => {
+    if (!_pendingMfaUser) return reject(new Error("No pending MFA challenge"))
+    _pendingMfaUser.sendMFACode(
+      code,
+      {
+        onSuccess: (session) => { _pendingMfaUser = null; resolve(session) },
+        onFailure: (err)     => { _pendingMfaUser = null; reject(err) },
+      },
+      "SOFTWARE_TOKEN_MFA"
+    )
+  })
+}
+
+// Start TOTP enrollment for the currently signed-in user. Returns the secret key.
+export function associateSoftwareToken() {
+  return new Promise((resolve, reject) => {
+    const user = userPool.getCurrentUser()
+    if (!user) return reject(new Error("Not logged in"))
+    user.getSession((err, session) => {
+      if (err || !session.isValid()) return reject(new Error("Invalid session"))
+      user.associateSoftwareToken({
+        associateSecretCode: (secretCode) => resolve(secretCode),
+        onFailure: (err) => reject(err),
+      })
+    })
+  })
+}
+
+// Verify a TOTP code to complete enrollment.
+export function verifySoftwareToken(code) {
+  return new Promise((resolve, reject) => {
+    const user = userPool.getCurrentUser()
+    if (!user) return reject(new Error("Not logged in"))
+    user.getSession((err, session) => {
+      if (err || !session.isValid()) return reject(new Error("Invalid session"))
+      user.verifySoftwareToken(code, "PR5JECT Authenticator", {
+        onSuccess: (result) => resolve(result),
+        onFailure: (err)    => reject(err),
+      })
     })
   })
 }

@@ -509,6 +509,109 @@ function CreatorsSection({ creators }) {
 
 // ── MAIN ADMIN PANEL ───────────────────────────────────────────────
 
+// ── FRAUD SECTION ─────────────────────────────────────────────────
+
+function FraudSection({ apiBase, adminKey }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [decisions, setDecisions] = useState({})
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${apiBase}/admin/fraud?key=${adminKey}`)
+      .then(r => r.ok ? r.json() : { orders: [] })
+      .then(d => setOrders(d.orders || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const review = async (orderId, decision) => {
+    setDecisions(prev => ({ ...prev, [orderId]: "..." }))
+    try {
+      const r = await fetch(`${apiBase}/admin/fraud/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminKey, orderId, decision }),
+      })
+      const d = await r.json()
+      setDecisions(prev => ({ ...prev, [orderId]: d.newStatus || decision }))
+    } catch {
+      setDecisions(prev => ({ ...prev, [orderId]: "ERROR" }))
+    }
+  }
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div>
+            <span style={S.sectionLabel}>RISK</span>
+            <p style={{ ...S.sectionTitle, margin: 0 }}>Fraud Queue</p>
+          </div>
+          <button onClick={load} style={{ background: "none", border: "1px solid #333", color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em", padding: "0.3rem 0.75rem", cursor: "pointer" }}>
+            REFRESH
+          </button>
+        </div>
+        {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+        {!loading && orders.length === 0 && (
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#555", padding: "1rem 0" }}>
+            No high-risk orders. Queue is clear.
+          </div>
+        )}
+        {!loading && orders.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Order", "User", "Item", "Amount", "Score", "Flags", "Date", "Actions"].map(h => (
+                    <th key={h} style={S.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => {
+                  const dec = decisions[o.orderId]
+                  const done = dec && dec !== "..."
+                  return (
+                    <tr key={o.orderId} style={{ background: done ? "#0a0a0a" : "transparent", opacity: done ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                      <td style={{ ...S.td, color: "#555", fontSize: "0.6rem" }}>{o.orderId.slice(0, 8)}</td>
+                      <td style={S.td}>{o.userId.slice(0, 8)}</td>
+                      <td style={S.td}>{o.garmentType}</td>
+                      <td style={{ ...S.td, color: "#f0f0f0" }}>{o.amount}</td>
+                      <td style={{ ...S.td, color: o.fraudScore > 80 ? "#ff4444" : "#e8ff00" }}>{o.fraudScore}</td>
+                      <td style={{ ...S.td, fontSize: "0.6rem" }}>{(o.fraudFlags || []).join(", ")}</td>
+                      <td style={S.td}>{o.createdAt}</td>
+                      <td style={S.td}>
+                        {done ? (
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#00ff88" }}>{dec}</span>
+                        ) : (
+                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                            {[["APPROVE","#00ff88"], ["REJECT","#ff4444"], ["ESCALATE","#e8ff00"]].map(([action, color]) => (
+                              <button
+                                key={action}
+                                onClick={() => review(o.orderId, action)}
+                                style={{ background: "none", border: `1px solid ${color}44`, color, fontFamily: "'DM Mono', monospace", fontSize: "0.5rem", letterSpacing: "0.1em", padding: "0.2rem 0.4rem", cursor: "pointer" }}
+                              >
+                                {action}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
+
 // ── SMS ADMIN SECTION ─────────────────────────────────────────────
 
 const SMS_TRIGGERS = [
@@ -778,6 +881,7 @@ export default function AdminPanel() {
 
   const TABS = [
     { id: "dashboard", label: "OPS DASHBOARD" },
+    { id: "fraud",     label: "FRAUD"         },
     { id: "sms",       label: "SMS"           },
     { id: "tools",     label: "TOOLS"         },
   ]
@@ -864,6 +968,11 @@ export default function AdminPanel() {
             </>
           )}
         </main>
+      )}
+
+      {/* Fraud tab */}
+      {activeTab === "fraud" && (
+        <FraudSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
       )}
 
       {/* SMS tab */}

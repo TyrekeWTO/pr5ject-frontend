@@ -17,6 +17,7 @@ import NewPasswordPage from "./components/NewPasswordPage"
 import ProfilePage from "./components/ProfilePage"
 import LeaderboardPage from "./components/LeaderboardPage"
 import PuzzlePage from "./components/PuzzlePage"
+import AccountPage from "./components/AccountPage"
 import AdminPanel from "./components/AdminPanel"
 import ComingSoon from "./components/ComingSoon"
 import DesignStudio from "./components/DesignStudio"
@@ -230,6 +231,7 @@ export default function App() {
   if (path === "/profile") return <ProfilePage />
   if (path === "/leaderboard") return <LeaderboardPage />
   if (path === "/puzzles") return <PuzzlePage />
+  if (path === "/account") return <AccountPage />
   if (path === "/studio") return <DesignStudio />
   if (path === "/terms") return <TermsPage />
   if (path === "/privacy") return <PrivacyPage />

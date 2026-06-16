@@ -194,37 +194,29 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                    <a href="/leaderboard" style={{
-                      flex: 1,
-                      display: "block",
-                      textAlign: "center",
-                      textDecoration: "none",
-                      fontFamily: "'DM Mono', monospace",
-                      fontSize: "0.6rem",
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      color: "#555",
-                      border: "1px solid #333",
-                      padding: "0.6rem",
-                    }}>
-                      LEADERBOARD
-                    </a>
-                    <a href="/puzzles" style={{
-                      flex: 1,
-                      display: "block",
-                      textAlign: "center",
-                      textDecoration: "none",
-                      fontFamily: "'DM Mono', monospace",
-                      fontSize: "0.6rem",
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      color: "#555",
-                      border: "1px solid #333",
-                      padding: "0.6rem",
-                    }}>
-                      PUZZLES
-                    </a>
+                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                    {[
+                      ["/leaderboard", "LEADERBOARD"],
+                      ["/puzzles", "PUZZLES"],
+                      ["/account", "SECURITY"],
+                    ].map(([href, label]) => (
+                      <a key={href} href={href} style={{
+                        flex: 1,
+                        display: "block",
+                        textAlign: "center",
+                        textDecoration: "none",
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: "0.6rem",
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                        color: "#555",
+                        border: "1px solid #333",
+                        padding: "0.6rem",
+                        minWidth: "5rem",
+                      }}>
+                        {label}
+                      </a>
+                    ))}
                   </div>
                 </>
               )}
