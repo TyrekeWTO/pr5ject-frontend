@@ -25,7 +25,6 @@ export default function Header({ user, onSignOut, onSubmit }) {
           <a href="/ai" className="nav-link">AI Stylist</a>
           <a href="/trends" className="nav-link">Trends</a>
           <a href="/studio" className="nav-link">Design Studio</a>
-          <a href="/configure" className="nav-link">3D Studio</a>
           <a href="/profile" className="nav-link">Profile</a>
           {!user && (
             <>

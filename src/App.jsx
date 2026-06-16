@@ -10,7 +10,6 @@ import OrderCancel from "./components/OrderCancel"
 import StylingAssistant from "./components/StylingAssistant"
 import DesignGenerator from "./components/DesignGenerator"
 import Trends from "./components/Trends"
-import Configurator from "./components/Configurator"
 import SignupPage from "./components/SignupPage"
 import VerifyPage from "./components/VerifyPage"
 import LoginPage from "./components/LoginPage"
@@ -174,7 +173,6 @@ export default function App() {
   if (path === "/ai") return <StylingAssistant />
   if (path === "/generate") return <DesignGenerator />
   if (path === "/trends") return <Trends />
-  if (path === "/configure") return <Configurator />
   if (path === "/signup") return <SignupPage />
   if (path === "/verify") return <VerifyPage />
   if (path === "/login") return <LoginPage />
