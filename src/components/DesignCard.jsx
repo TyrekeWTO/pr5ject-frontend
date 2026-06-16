@@ -1,43 +1,25 @@
 import { useState } from "react"
 
-const GARMENT_EMOJI = {
-  "cargo-shorts": "🩳",
-  "tactical-hoodie": "🧥",
-  "utility-vest": "🦺",
-  "track-pants": "👖",
-  "bomber-jacket": "🧣",
-}
-
 const THRESHOLD = 50
 const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
 
-export default function DesignCard({ design, onVote, onOrder }) {
+export default function DesignCard({ design, onOrder }) {
   const [ordering, setOrdering] = useState(false)
-  const [voting, setVoting] = useState(false)
-  const [imgLoaded, setImgLoaded] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
+  const [revealed, setRevealed] = useState(false)
 
   const {
     designId,
     garmentType,
-    configuration,
-    voteCount = 0,
     orderCount = 0,
     status,
-    rank,
-    creatorId,
   } = design
 
   const imageUrl = `${CF_BASE}/designs/${designId}/image.jpg`
+  const title = garmentType.replace(/-/g, " ")
 
   const fundingPercent = Math.min(100, Math.round((orderCount / THRESHOLD) * 100))
   const isFunded = status === "FUNDED"
-
-  const handleVote = async () => {
-    setVoting(true)
-    await onVote(designId)
-    setVoting(false)
-  }
 
   const handleOrder = async () => {
     setOrdering(true)
@@ -48,72 +30,40 @@ export default function DesignCard({ design, onVote, onOrder }) {
   }
 
   return (
-    <div className={`design-card ${isFunded ? "funded" : ""}`}>
-
-      {!imgFailed && (
-        <div className={`card-img-wrap${imgLoaded ? " loaded" : ""}`}>
-          <img
-            src={imageUrl}
-            alt=""
-            className="card-img"
-            onLoad={() => setImgLoaded(true)}
-            onError={() => setImgFailed(true)}
-          />
-        </div>
+    <div
+      className={`design-card ${isFunded ? "funded" : ""}${revealed ? " revealed" : ""}`}
+      onClick={() => setRevealed((r) => !r)}
+    >
+      {!imgFailed ? (
+        <img
+          src={imageUrl}
+          alt={title}
+          className="card-img"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <div className="card-img-fallback" />
       )}
 
-      <div className="card-rank">#{rank}</div>
-
-      <div className="card-garment">
-        <span className="garment-icon">
-          {GARMENT_EMOJI[garmentType] || "👕"}
-        </span>
-        <div className="garment-tag">{garmentType.replace("-", " ")}</div>
-      </div>
-
-      <div className="config-chips">
-        {Object.entries(configuration || {}).map(([key, val]) => (
-          <span key={key} className="chip">{val}</span>
-        ))}
-      </div>
-
-      <div className="card-creator">
-        by <span>{creatorId}</span>
-      </div>
-
-      <div className="funding-section">
-        <div className="funding-labels">
-          <span className="funding-pct">{fundingPercent}% funded</span>
-          <span className="funding-count">{orderCount} / {THRESHOLD} orders</span>
+      <div className="card-overlay">
+        <div className="card-overlay-title">{title}</div>
+        <div className="card-overlay-funding">
+          {isFunded ? "Funded" : `${fundingPercent}% funded`}
         </div>
-        <div className="funding-bar">
-          <div
-            className={`funding-fill ${isFunded ? "funded" : ""}`}
-            style={{ width: `${fundingPercent}%` }}
-          />
-        </div>
-        {isFunded && (
-          <div className="funded-badge">🏆 FUNDED — GOING TO MANUFACTURING</div>
-        )}
-      </div>
-
-      <div className="stats-row">
-        <button
-          className={`vote-btn ${voting ? "loading" : ""}`}
-          onClick={handleVote}
-          disabled={voting || isFunded}
-        >
-          {voting ? "..." : `▲ ${voteCount}`}
-        </button>
         <button
           className={`preorder-btn ${ordering ? "loading" : ""}`}
-          onClick={handleOrder}
+          onClick={(e) => { e.stopPropagation(); handleOrder() }}
           disabled={ordering || isFunded}
         >
           {ordering ? "..." : "Pre-order"}
         </button>
-        <span className="stat-divider" />
-        <span className="order-stat">{orderCount} pre-orders</span>
+      </div>
+
+      <div className="funding-bar">
+        <div
+          className={`funding-fill ${isFunded ? "funded" : ""}`}
+          style={{ width: `${fundingPercent}%` }}
+        />
       </div>
     </div>
   )

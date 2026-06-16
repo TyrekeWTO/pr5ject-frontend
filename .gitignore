@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+
+# env files (values are public client-side, but keep out of git by convention)
+.env
+.env.*
+!.env.example
+
+# accidental artifacts
+50

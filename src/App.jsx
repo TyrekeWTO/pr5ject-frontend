@@ -7,6 +7,18 @@ import AuthScreen from "./components/AuthScreen"
 import SubmitScreen from "./components/SubmitScreen"
 import OrderSuccess from "./components/OrderSuccess"
 import OrderCancel from "./components/OrderCancel"
+import StylingAssistant from "./components/StylingAssistant"
+import DesignGenerator from "./components/DesignGenerator"
+import Trends from "./components/Trends"
+import Configurator from "./components/Configurator"
+import SignupPage from "./components/SignupPage"
+import VerifyPage from "./components/VerifyPage"
+import LoginPage from "./components/LoginPage"
+import NewPasswordPage from "./components/NewPasswordPage"
+import ProfilePage from "./components/ProfilePage"
+import AdminPanel from "./components/AdminPanel"
+import ComingSoon from "./components/ComingSoon"
+import DesignStudio from "./components/DesignStudio"
 import { getCurrentUser, signOut, getIdToken } from "./auth/cognito"
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
@@ -24,12 +36,23 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState(null)
   const [orderError, setOrderError] = useState(null)
 
+  // Whether the site is open to visitors (null while loading)
+  const [siteOpen, setSiteOpen] = useState(null)
+
   // Check for an existing session on load
   useEffect(() => {
     getCurrentUser().then((u) => {
       setUser(u)
       setAuthChecked(true)
     })
+  }, [])
+
+  // Check the site-wide open/closed flag before rendering anything else
+  useEffect(() => {
+    fetch(`${API_BASE}/status`)
+      .then((r) => r.json())
+      .then((data) => setSiteOpen(data.open !== false))
+      .catch(() => setSiteOpen(true))
   }, [])
 
   const fetchLeaderboard = async () => {
@@ -61,36 +84,6 @@ export default function App() {
   useEffect(() => {
     fetchLeaderboard()
   }, [])
-
-  const handleVote = async (designId) => {
-    if (!user) {
-      setPendingAction(() => () => handleVote(designId))
-      setShowAuth(true)
-      return
-    }
-    try {
-      const token = await getIdToken()
-      const res = await fetch(`${API_BASE}/designs/${designId}/vote`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        if (res.status === 409) {
-          console.warn("Vote rejected:", data.error)
-          return
-        }
-        throw new Error(data.error || "Vote failed")
-      }
-      await fetchLeaderboard()
-    } catch (err) {
-      console.error("Vote error:", err)
-    }
-  }
 
   const handleOrder = async (designId) => {
     if (!user) {
@@ -162,10 +155,32 @@ export default function App() {
     }
   }
 
-  // Lightweight path-based routing for the Stripe return pages (no router lib).
+  // Lightweight path-based routing (no router lib).
   const path = window.location.pathname
+
+  // /admin is always reachable (even when the site is closed), but only
+  // renders anything if the key query param matches.
+  if (path === "/admin") {
+    const key = new URLSearchParams(window.location.search).get("key")
+    return key === "437918" ? <AdminPanel /> : null
+  }
+
+  // Wait for the open/closed check before rendering anything else
+  if (siteOpen === null) return null
+  if (siteOpen === false) return <ComingSoon />
+
   if (path === "/order/success") return <OrderSuccess />
   if (path === "/order/cancel") return <OrderCancel />
+  if (path === "/ai") return <StylingAssistant />
+  if (path === "/generate") return <DesignGenerator />
+  if (path === "/trends") return <Trends />
+  if (path === "/configure") return <Configurator />
+  if (path === "/signup") return <SignupPage />
+  if (path === "/verify") return <VerifyPage />
+  if (path === "/login") return <LoginPage />
+  if (path === "/new-password") return <NewPasswordPage />
+  if (path === "/profile") return <ProfilePage />
+  if (path === "/studio") return <DesignStudio />
 
   if (!authChecked) return null
 
@@ -215,7 +230,6 @@ export default function App() {
               <DesignCard
                 key={design.designId}
                 design={design}
-                onVote={handleVote}
                 onOrder={handleOrder}
               />
             ))}

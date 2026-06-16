@@ -65,7 +65,31 @@ html, body, #root {
   margin-top: 1px;
 }
 
-.nav { display: flex; gap: 2rem; }
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--text-primary);
+  margin: 0 auto;
+}
+
+.nav { display: flex; gap: 2rem; align-items: center; }
 
 .nav-link {
   font-family: var(--font-mono);
@@ -115,54 +139,8 @@ html, body, #root {
 
 .designs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
-}
-
-.design-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 1.75rem;
-  position: relative;
-  transition: border-color 0.2s, transform 0.2s;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.design-card:hover {
-  border-color: var(--border-bright);
-  transform: translateY(-2px);
-}
-
-.design-card.funded {
-  border-color: var(--funded-green);
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.08);
-}
-
-.card-rank {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  font-family: var(--font-display);
-  font-size: 2rem;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-  line-height: 1;
-}
-
-.card-garment { display: flex; align-items: center; gap: 1rem; }
-
-.garment-icon { font-size: 3rem; line-height: 1; filter: grayscale(0.3); }
-
-.garment-tag {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  line-height: 1;
 }
 
 .config-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -188,84 +166,98 @@ html, body, #root {
 
 .card-creator span { color: var(--accent); }
 
-.funding-section { display: flex; flex-direction: column; gap: 0.4rem; }
-
-.funding-labels {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+/* ── ARENA DESIGN CARD ─────────────────────────────────────── */
+.design-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--surface);
+  cursor: pointer;
 }
 
-.funding-pct { color: var(--accent); font-weight: 500; }
-.funding-count { color: var(--text-muted); }
+.card-img,
+.card-img-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-img-fallback { background: var(--surface-2); }
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  padding-bottom: calc(1.25rem + 1px);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+@media (hover: hover) {
+  .design-card:hover .card-overlay { opacity: 1; }
+}
+
+.design-card.revealed .card-overlay { opacity: 1; }
+
+.card-overlay-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.card-overlay-funding {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 
 .funding-bar {
-  height: 3px;
-  background: var(--surface-2);
-  border-radius: 1px;
-  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 1;
 }
 
 .funding-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 1px;
   transition: width 0.6s ease;
 }
 
 .funding-fill.funded { background: var(--funded-green); }
 
-.funded-badge {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  color: var(--funded-green);
-  text-transform: uppercase;
-  margin-top: 0.25rem;
-}
-
-.stats-row { display: flex; align-items: center; gap: 1rem; }
-
-.vote-btn {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  padding: 0.4rem 0.8rem;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.vote-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.vote-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
 .preorder-btn {
+  width: 100%;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   background: var(--accent);
-  border: 1px solid var(--accent);
+  border: none;
+  border-radius: 0;
   color: var(--black);
-  padding: 0.4rem 0.9rem;
-  border-radius: 2px;
+  padding: 0.75rem 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
 }
-.preorder-btn:hover:not(:disabled) { background: var(--accent-dim); border-color: var(--accent-dim); }
+.preorder-btn:hover:not(:disabled) { background: var(--accent-dim); }
 .preorder-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.stat-divider { width: 1px; height: 14px; background: var(--border); }
-
-.order-stat {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
 
 .order-section { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -342,8 +334,6 @@ html, body, #root {
 .design-card.skeleton { pointer-events: none; }
 
 .skel {
-  background: var(--surface-2);
-  border-radius: 2px;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -351,12 +341,6 @@ html, body, #root {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-
-.skel-rank  { width: 40px; height: 40px; margin-left: auto; }
-.skel-garment { width: 180px; height: 48px; }
-.skel-chips { width: 100%; height: 28px; }
-.skel-bar   { width: 100%; height: 32px; }
-.skel-btn   { width: 100%; height: 44px; }
 
 .error-state {
   text-align: center;
@@ -519,25 +503,6 @@ html, body, #root {
 }
 
 .file-clear:hover { color: var(--text-primary); }
-
-/* ── DESIGN CARD IMAGE ──────────────────────────────────────── */
-.card-img-wrap {
-  display: none;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 2px;
-}
-
-.card-img-wrap.loaded {
-  display: block;
-}
-
-.card-img {
-  width: 100%;
-  display: block;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-}
 
 /* ── AI ASSISTANT SECTION ──────────────────────────────────── */
 .ai-section {
@@ -707,9 +672,86 @@ html, body, #root {
 
 .trends-combo:last-child { border-bottom: none; }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
+  .designs-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
   .header-inner { padding: 0 1rem; }
   .main { padding: 2rem 1rem 4rem; }
-  .nav { gap: 1.25rem; }
-  .designs-grid { grid-template-columns: 1fr; }
-} 
+
+  /* Hamburger nav */
+  .nav-toggle { display: flex; }
+
+  .nav {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--off-black);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 1rem 1rem;
+    z-index: 99;
+  }
+
+  .nav.open { display: flex; }
+
+  .nav-link,
+  .nav-user,
+  .nav-signout {
+    width: 100%;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .nav-signout { border: none; border-bottom: 1px solid var(--border); }
+
+  /* Layout */
+  .designs-grid,
+  .trends-grid { grid-template-columns: 1fr; }
+
+  /* Forms full-width */
+  .auth-input,
+  .auth-btn,
+  .ai-text-input,
+  .ai-gen-btn,
+  .order-btn,
+  .feasibility-btn,
+  .submit-actions,
+  .auth-page .auth-box {
+    width: 100%;
+  }
+
+  .ai-input-row,
+  .submit-actions {
+    flex-direction: column;
+  }
+
+  .auth-page .auth-box {
+    padding: 32px 24px;
+  }
+
+  /* Color / material chips: wrappable, tappable */
+  .config-chips {
+    gap: 0.6rem;
+  }
+
+  .config-chips .chip {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+  }
+
+  /* 3D configurator canvas */
+  .ai-section > div[style*="height"] {
+    height: 280px !important;
+  }
+}

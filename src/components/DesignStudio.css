@@ -1,0 +1,602 @@
+/* ── DESIGN STUDIO PAGE ─────────────────────────────────────── */
+.ds-page {
+  min-height: 100vh;
+  background: #0a0a0a;
+  padding-bottom: 120px;
+}
+
+.ds-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 0;
+}
+
+/* Two-column layout on desktop */
+.ds-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .ds-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 3rem;
+  }
+  .ds-viewer-col {
+    width: 60%;
+    position: sticky;
+    top: 80px;
+  }
+  .ds-controls-col {
+    width: 40%;
+    padding-top: 0.5rem;
+  }
+}
+
+/* ── 3D VIEWER ──────────────────────────────────────────────── */
+.ds-perspective {
+  perspective: 1200px;
+  width: 100%;
+}
+
+@keyframes ds-float {
+  0%, 100% {
+    transform: translateY(0px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+  }
+  50% {
+    transform: translateY(-8px);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.ds-card-float {
+  animation: ds-float 3s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.ds-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(ellipse at center, #111111, #0a0a0a);
+  overflow: hidden;
+}
+
+/* ── GARMENT IMAGE / PLACEHOLDER ───────────────────────────── */
+.ds-garment-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.ds-placeholder {
+  position: absolute;
+  inset: 0;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-placeholder-text {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  text-align: center;
+  padding: 0 1.25rem;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+/* ── OVERLAY ZONE ───────────────────────────────────────────── */
+.ds-overlay-zone {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+@keyframes ds-pulse-border {
+  0%, 100% { border-color: rgba(232, 255, 0, 0.7); }
+  50%       { border-color: rgba(232, 255, 0, 0.15); }
+}
+
+.ds-overlay-zone.empty {
+  border: 1.5px dashed rgba(232, 255, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: ds-pulse-border 2s ease-in-out infinite;
+}
+
+.ds-overlay-zone.empty:hover {
+  background: rgba(232, 255, 0, 0.04);
+}
+
+.ds-overlay-zone.has-image {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: default;
+}
+
+.ds-add-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: #e8ff00;
+  text-transform: uppercase;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.ds-overlay-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  display: block;
+}
+
+/* ── RESIZE HANDLES ─────────────────────────────────────────── */
+.ds-resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #e8ff00;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+
+.ds-handle-nw { top: -5px;    left: -5px;  cursor: nw-resize; }
+.ds-handle-ne { top: -5px;    right: -5px; cursor: ne-resize; }
+.ds-handle-sw { bottom: -5px; left: -5px;  cursor: sw-resize; }
+.ds-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }
+
+/* ── CONTROLS ───────────────────────────────────────────────── */
+.ds-section {
+  margin-bottom: 1.5rem;
+}
+
+.ds-section-label {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: #e8ff00;
+  text-transform: uppercase;
+  margin-bottom: 0.7rem;
+}
+
+.ds-zone-hint {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: #555;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+/* Garment / view pills */
+.ds-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ds-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #2e2e2e;
+  color: #666;
+  padding: 0.5rem 1.1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ds-pill:hover:not(.active) {
+  border-color: #555;
+  color: #ccc;
+}
+
+.ds-pill.active {
+  background: #e8ff00;
+  border-color: #e8ff00;
+  color: #0a0a0a;
+  font-weight: 500;
+}
+
+/* Color swatches */
+.ds-swatches {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ds-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+  outline: none;
+}
+
+.ds-swatch:hover {
+  transform: scale(1.12);
+}
+
+.ds-swatch.selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+/* Upload */
+.ds-hidden-input { display: none; }
+
+.ds-upload-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #e8ff00;
+  color: #e8ff00;
+  padding: 0.6rem 1.2rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.ds-upload-btn:hover:not(:disabled) {
+  background: #e8ff00;
+  color: #0a0a0a;
+}
+
+.ds-upload-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Thumbnail strip */
+.ds-thumbnail-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ds-thumbnail {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: 2px solid #2e2e2e;
+  border-radius: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.ds-thumbnail:hover { border-color: #555; }
+
+.ds-thumbnail.active { border-color: #e8ff00; }
+
+.ds-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ds-thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.75);
+  border: none;
+  color: #ccc;
+  font-size: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 1px;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.ds-thumb-remove:hover { color: #fff; }
+
+/* AI + Snapshot row */
+.ds-action-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.ds-ai-btn {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #e8ff00;
+  color: #e8ff00;
+  padding: 0.65rem 1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ds-ai-btn:hover {
+  background: #e8ff00;
+  color: #0a0a0a;
+}
+
+.ds-snapshot-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
+  padding: 0.65rem 1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ds-snapshot-btn:hover {
+  border-color: #666;
+  color: #ccc;
+}
+
+/* Error */
+.ds-error {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: #ff4444;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  background: rgba(255, 68, 68, 0.05);
+  border-radius: 2px;
+  line-height: 1.5;
+}
+
+/* ── STICKY BOTTOM BAR ──────────────────────────────────────── */
+.ds-sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #111;
+  border-top: 1px solid #222;
+  padding: 0.75rem 1rem 0.85rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+@media (min-width: 768px) {
+  .ds-sticky-bar {
+    padding: 0.75rem 2rem 0.85rem;
+  }
+}
+
+.ds-size-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ds-size-btn {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #2e2e2e;
+  color: #666;
+  padding: 0.45rem 0;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.ds-size-btn:hover { border-color: #555; color: #ccc; }
+
+.ds-size-btn.selected {
+  background: #e8ff00;
+  border-color: #e8ff00;
+  color: #0a0a0a;
+  font-weight: 500;
+}
+
+.ds-preorder-btn {
+  width: 100%;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: #e8ff00;
+  border: none;
+  color: #0a0a0a;
+  padding: 0.9rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.ds-preorder-btn:hover:not(.disabled):not(:disabled) { opacity: 0.85; }
+
+.ds-preorder-btn.disabled,
+.ds-preorder-btn:disabled {
+  background: #1e1e1e;
+  color: #444;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* ── AI MODAL ───────────────────────────────────────────────── */
+.ds-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1.5rem;
+}
+
+.ds-modal-box {
+  position: relative;
+  background: #141414;
+  border: 1px solid #262626;
+  padding: 2.5rem 2rem 2rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ds-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.ds-modal-close:hover { color: #bbb; }
+
+.ds-modal-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  margin: 0.25rem 0 0;
+}
+
+.ds-modal-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ds-modal-input {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9rem;
+  padding: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+  margin-top: 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ds-modal-input:focus { border-color: #e8ff00; }
+.ds-modal-input::placeholder { color: #444; }
+
+.ds-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.ds-modal-gen-btn {
+  flex: 1;
+  background: #e8ff00;
+  border: none;
+  color: #0a0a0a;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.85rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.ds-modal-gen-btn:hover:not(:disabled) { opacity: 0.85; }
+.ds-modal-gen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.ds-modal-cancel-btn {
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.85rem 1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ds-modal-cancel-btn:hover { border-color: #666; color: #aaa; }
+
+/* ── TOAST ──────────────────────────────────────────────────── */
+.ds-toast {
+  position: fixed;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #e8ff00;
+  color: #0a0a0a;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2px;
+  z-index: 300;
+  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  text-align: center;
+  animation: ds-toast-in 0.25s ease;
+}
+
+@keyframes ds-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

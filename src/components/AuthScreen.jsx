@@ -2,34 +2,25 @@ import { useState } from "react"
 import { signUp, confirmSignUp, signIn } from "../auth/cognito"
 
 export default function AuthScreen({ onAuthed, onDismiss }) {
-  const [step, setStep] = useState("phone") // "phone" | "code"
-  const [phone, setPhone] = useState("")
+  const [step, setStep] = useState("email") // "email" | "code"
+  const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Normalize to E.164 (+1 for US). Strips everything but digits.
-  const normalizePhone = (raw) => {
-    const digits = raw.replace(/\D/g, "")
-    if (digits.length === 10) return `+1${digits}`
-    if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
-    return `+${digits}`
-  }
-
   const handleSendCode = async () => {
     setError(null)
-    const e164 = normalizePhone(phone)
-    if (e164.length < 11) {
-      setError("Enter a valid phone number")
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed.includes("@") || !trimmed.includes(".")) {
+      setError("Enter a valid email address")
       return
     }
     setLoading(true)
     try {
-      await signUp(e164)
-      setPhone(e164)
+      await signUp(trimmed)
+      setEmail(trimmed)
       setStep("code")
     } catch (err) {
-      // If user already exists, Cognito throws — handle gracefully later
       setError(err.message || "Couldn't send code")
     } finally {
       setLoading(false)
@@ -40,8 +31,8 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
     setError(null)
     setLoading(true)
     try {
-      await confirmSignUp(phone, code.trim())
-      await signIn(phone)
+      await confirmSignUp(email, code.trim())
+      await signIn(email)
       onAuthed()
     } catch (err) {
       setError(err.message || "Invalid code")
@@ -61,16 +52,16 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
           <span className="auth-tagline">THE CLOTHING CLOUD</span>
         </div>
 
-        {step === "phone" && (
+        {step === "email" && (
           <>
             <h2 className="auth-title">Enter the Arena</h2>
-            <p className="auth-sub">Verify your number to vote and pre-order.</p>
+            <p className="auth-sub">Verify your email to vote and pre-order.</p>
             <input
               className="auth-input"
-              type="tel"
-              placeholder="(555) 123-4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
             />
             <button
@@ -86,7 +77,7 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
         {step === "code" && (
           <>
             <h2 className="auth-title">Enter Code</h2>
-            <p className="auth-sub">Sent to {phone}</p>
+            <p className="auth-sub">Sent to {email}</p>
             <input
               className="auth-input auth-code"
               type="text"
@@ -106,9 +97,9 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
             </button>
             <button
               className="auth-back"
-              onClick={() => { setStep("phone"); setCode(""); setError(null) }}
+              onClick={() => { setStep("email"); setCode(""); setError(null) }}
             >
-              ← Use a different number
+              ← Use a different email
             </button>
           </>
         )}

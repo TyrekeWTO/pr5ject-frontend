@@ -352,3 +352,58 @@
   border-color: #e8ff00;
   color: #e8ff00;
 }
+
+/* ── STANDALONE AUTH / ADMIN PAGES ──────────────────────────── */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.auth-page .auth-box {
+  position: static;
+}
+
+/* ── COMING SOON ─────────────────────────────────────────────── */
+.coming-soon {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: var(--black);
+}
+
+.coming-soon .logo-mark {
+  font-size: 1.8rem;
+}
+
+/* ── ADMIN TOGGLE ─────────────────────────────────────────────── */
+.admin-toggle {
+  width: 100%;
+  min-height: 120px;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  letter-spacing: 0.2em;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.admin-toggle:hover:not(:disabled) { opacity: 0.85; }
+.admin-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.admin-toggle.is-open {
+  background: var(--funded-green);
+  color: var(--black);
+}
+
+.admin-toggle.is-closed {
+  background: #ff4444;
+  color: #fff;
+}
