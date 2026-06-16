@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
-import { confirmSignUp } from "../auth/cognito"
+import { confirmSignUp, signIn, getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
 export default function VerifyPage() {
   const params = new URLSearchParams(window.location.search)
@@ -27,6 +29,26 @@ export default function VerifyPage() {
     try {
       await confirmSignUp(trimmed, code.trim())
       track("verify_success")
+
+      // Register referral code if one was stored during signup
+      const refCode = sessionStorage.getItem("pr5ject_ref_code")
+      if (refCode) {
+        try {
+          const session = await signIn(trimmed)
+          if (session && !session.challengeName) {
+            const token = await getIdToken()
+            if (token) {
+              await fetch(`${API_BASE}/users/profile`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ referralCode: refCode }),
+              })
+            }
+          }
+        } catch {}
+        sessionStorage.removeItem("pr5ject_ref_code")
+      }
+
       window.location.assign("/login")
     } catch (err) {
       track("verify_error", { message: err.message })

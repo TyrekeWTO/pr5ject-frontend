@@ -15,6 +15,8 @@ import VerifyPage from "./components/VerifyPage"
 import LoginPage from "./components/LoginPage"
 import NewPasswordPage from "./components/NewPasswordPage"
 import ProfilePage from "./components/ProfilePage"
+import LeaderboardPage from "./components/LeaderboardPage"
+import PuzzlePage from "./components/PuzzlePage"
 import AdminPanel from "./components/AdminPanel"
 import ComingSoon from "./components/ComingSoon"
 import DesignStudio from "./components/DesignStudio"
@@ -184,6 +186,18 @@ export default function App() {
     const u = await getCurrentUser()
     setUser(u)
     setShowAuth(false)
+
+    // Award daily login XP (silent — non-blocking)
+    try {
+      const token = await getIdToken()
+      if (token) {
+        fetch(`${API_BASE}/users/checkin`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {})
+      }
+    } catch {}
+
     if (pendingAction) {
       pendingAction()
       setPendingAction(null)
@@ -214,6 +228,8 @@ export default function App() {
   if (path === "/login") return <LoginPage />
   if (path === "/new-password") return <NewPasswordPage />
   if (path === "/profile") return <ProfilePage />
+  if (path === "/leaderboard") return <LeaderboardPage />
+  if (path === "/puzzles") return <PuzzlePage />
   if (path === "/studio") return <DesignStudio />
   if (path === "/terms") return <TermsPage />
   if (path === "/privacy") return <PrivacyPage />

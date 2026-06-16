@@ -8,7 +8,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  useEffect(() => { track("page_view", { page: "signup" }) }, [])
+  useEffect(() => {
+    track("page_view", { page: "signup" })
+    // Persist referral code from URL for post-verification registration
+    const ref = new URLSearchParams(window.location.search).get("ref")
+    if (ref) sessionStorage.setItem("pr5ject_ref_code", ref.toUpperCase())
+  }, [])
 
   const handleSignup = async () => {
     setError(null)

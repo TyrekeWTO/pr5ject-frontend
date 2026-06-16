@@ -2,90 +2,11 @@ import { useState, useEffect, useRef } from "react"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 const CF_BASE  = "https://d1wxtx6tyeb7i0.cloudfront.net"
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || "437918"
+const ADMIN_KEY = "437918"
 
 const GARMENT_OPTS = [
   { key: "star-shorts", label: "Star Shorts", colors: ["black", "pink", "sand", "olive"] },
   { key: "five-hoodie", label: "Five Hoodie", colors: ["black", "sand", "olive", "crimson"] },
-]
-
-// ── MOCK DATA ──────────────────────────────────────────────────────
-
-const SNAPSHOT_CARDS = [
-  { label: "Orders Today",    value: "14",     sub: "+3 vs yesterday",  up: true  },
-  { label: "Revenue Today",   value: "$1,260", sub: "+$340 vs yesterday", up: true },
-  { label: "Active Designs",  value: "8",      sub: "live in the Arena", up: null  },
-  { label: "Total Pre-orders",value: "187",    sub: "+14 today",         up: true  },
-  { label: "Active Creators", value: "23",     sub: "+2 this week",      up: true  },
-  { label: "Funded Designs",  value: "3",      sub: "1 funded today",    up: true  },
-]
-
-const CASH_FLOW_DATA = [
-  { date: "May 17", revenue: 320  },
-  { date: "May 18", revenue: 480  },
-  { date: "May 19", revenue: 210  },
-  { date: "May 20", revenue: 590  },
-  { date: "May 21", revenue: 780  },
-  { date: "May 22", revenue: 430  },
-  { date: "May 23", revenue: 290  },
-  { date: "May 24", revenue: 640  },
-  { date: "May 25", revenue: 920  },
-  { date: "May 26", revenue: 1100 },
-  { date: "May 27", revenue: 870  },
-  { date: "May 28", revenue: 560  },
-  { date: "May 29", revenue: 340  },
-  { date: "May 30", revenue: 720  },
-  { date: "May 31", revenue: 850  },
-  { date: "Jun 01", revenue: 1200 },
-  { date: "Jun 02", revenue: 980  },
-  { date: "Jun 03", revenue: 450  },
-  { date: "Jun 04", revenue: 380  },
-  { date: "Jun 05", revenue: 760  },
-  { date: "Jun 06", revenue: 890  },
-  { date: "Jun 07", revenue: 1050 },
-  { date: "Jun 08", revenue: 730  },
-  { date: "Jun 09", revenue: 620  },
-  { date: "Jun 10", revenue: 940  },
-  { date: "Jun 11", revenue: 1180 },
-  { date: "Jun 12", revenue: 820  },
-  { date: "Jun 13", revenue: 670  },
-  { date: "Jun 14", revenue: 990  },
-  { date: "Jun 15", revenue: 1260 },
-]
-
-const FUNDING_DATA = [
-  { id: "D-001", name: "Solar Flare Hoodie", creator: "jordan_m",  garment: "Five Hoodie",  colorway: "Crimson", orders: 42, goal: 50 },
-  { id: "D-002", name: "Void Shorts",        creator: "kylez99",   garment: "Star Shorts",  colorway: "Black",   orders: 28, goal: 50 },
-  { id: "D-003", name: "Desert Run",         creator: "amara_x",   garment: "Star Shorts",  colorway: "Sand",    orders: 50, goal: 50 },
-  { id: "D-004", name: "Midnight Olive",     creator: "ty_creates", garment: "Five Hoodie", colorway: "Olive",   orders: 12, goal: 50 },
-  { id: "D-005", name: "Pink Static",        creator: "nadia_d",   garment: "Star Shorts",  colorway: "Pink",    orders: 50, goal: 50 },
-  { id: "D-006", name: "Crimson Code",       creator: "marcus_w",  garment: "Five Hoodie",  colorway: "Black",   orders: 7,  goal: 50 },
-  { id: "D-007", name: "Sand Dune Drop",     creator: "priya_v",   garment: "Star Shorts",  colorway: "Olive",   orders: 34, goal: 50 },
-  { id: "D-008", name: "Nocturne",           creator: "lev_art",   garment: "Five Hoodie",  colorway: "Sand",    orders: 19, goal: 50 },
-]
-
-const ORDERS_DATA = [
-  { id: "ORD-1091", email: "alex.k@gmail.com",    design: "Solar Flare Hoodie", item: "Five Hoodie / Crimson / L",  amount: "$89", date: "Jun 16", status: "pending"   },
-  { id: "ORD-1090", email: "mia.r@outlook.com",   design: "Void Shorts",        item: "Star Shorts / Black / M",    amount: "$65", date: "Jun 16", status: "pending"   },
-  { id: "ORD-1089", email: "dean.t@yahoo.com",    design: "Solar Flare Hoodie", item: "Five Hoodie / Crimson / XL", amount: "$89", date: "Jun 16", status: "pending"   },
-  { id: "ORD-1088", email: "priya.v@gmail.com",   design: "Sand Dune Drop",     item: "Star Shorts / Olive / S",    amount: "$65", date: "Jun 15", status: "paid"      },
-  { id: "ORD-1087", email: "jordy_m@icloud.com",  design: "Desert Run",         item: "Star Shorts / Sand / M",     amount: "$65", date: "Jun 15", status: "fulfilled" },
-  { id: "ORD-1086", email: "cam.b@gmail.com",     design: "Pink Static",        item: "Star Shorts / Pink / XS",    amount: "$65", date: "Jun 15", status: "paid"      },
-  { id: "ORD-1085", email: "rens.d@gmail.com",    design: "Midnight Olive",     item: "Five Hoodie / Olive / M",    amount: "$89", date: "Jun 14", status: "refunded"  },
-  { id: "ORD-1084", email: "talia_x@proton.me",   design: "Nocturne",           item: "Five Hoodie / Sand / L",     amount: "$89", date: "Jun 14", status: "paid"      },
-  { id: "ORD-1083", email: "luca.m@gmail.com",    design: "Desert Run",         item: "Star Shorts / Sand / L",     amount: "$65", date: "Jun 13", status: "fulfilled" },
-  { id: "ORD-1082", email: "amy.w@email.com",     design: "Void Shorts",        item: "Star Shorts / Black / S",    amount: "$65", date: "Jun 13", status: "fulfilled" },
-]
-
-const CREATORS_DATA = [
-  { name: "Jordan Mitchell", handle: "jordan_m",   submissions: 3, funded: 2, earnings: "$180", orders: 42, joined: "Mar 2026", status: "active"   },
-  { name: "Kyle Zavros",     handle: "kylez99",    submissions: 2, funded: 1, earnings: "$90",  orders: 28, joined: "Apr 2026", status: "active"   },
-  { name: "Amara Osei",      handle: "amara_x",   submissions: 5, funded: 3, earnings: "$270", orders: 50, joined: "Feb 2026", status: "active"   },
-  { name: "Ty Williams",     handle: "ty_creates", submissions: 1, funded: 0, earnings: "$0",   orders: 12, joined: "Jun 2026", status: "active"   },
-  { name: "Nadia Dahl",      handle: "nadia_d",   submissions: 4, funded: 2, earnings: "$180", orders: 50, joined: "Mar 2026", status: "active"   },
-  { name: "Marcus Webb",     handle: "marcus_w",  submissions: 2, funded: 1, earnings: "$90",  orders: 7,  joined: "May 2026", status: "inactive" },
-  { name: "Priya Venkat",    handle: "priya_v",   submissions: 3, funded: 2, earnings: "$180", orders: 34, joined: "Apr 2026", status: "active"   },
-  { name: "Lev Artmann",     handle: "lev_art",   submissions: 2, funded: 1, earnings: "$90",  orders: 19, joined: "May 2026", status: "active"   },
 ]
 
 // ── STYLE HELPERS ──────────────────────────────────────────────────
@@ -135,12 +56,16 @@ const S = {
 }
 
 const STATUS_COLORS = {
-  pending:   { bg: "rgba(232,255,0,0.08)",  text: "#e8ff00" },
-  paid:      { bg: "rgba(0,255,136,0.08)", text: "#00ff88" },
-  fulfilled: { bg: "rgba(0,255,136,0.12)", text: "#00cc6a" },
-  refunded:  { bg: "rgba(255,68,68,0.08)", text: "#ff6666" },
-  inactive:  { bg: "rgba(255,255,255,0.04)", text: "#555" },
-  active:    { bg: "rgba(0,255,136,0.08)", text: "#00ff88" },
+  pending:       { bg: "rgba(232,255,0,0.08)",  text: "#e8ff00" },
+  pending_charge:{ bg: "rgba(232,255,0,0.08)",  text: "#e8ff00" },
+  card_saved:    { bg: "rgba(232,255,0,0.08)",  text: "#e8ff00" },
+  paid:          { bg: "rgba(0,255,136,0.08)",  text: "#00ff88" },
+  charged:       { bg: "rgba(0,255,136,0.08)",  text: "#00ff88" },
+  fulfilled:     { bg: "rgba(0,255,136,0.12)",  text: "#00cc6a" },
+  refunded:      { bg: "rgba(255,68,68,0.08)",  text: "#ff6666" },
+  charge_failed: { bg: "rgba(255,68,68,0.08)",  text: "#ff6666" },
+  inactive:      { bg: "rgba(255,255,255,0.04)", text: "#555"   },
+  active:        { bg: "rgba(0,255,136,0.08)",  text: "#00ff88" },
 }
 
 function StatusBadge({ status }) {
@@ -163,7 +88,52 @@ function StatusBadge({ status }) {
 
 // ── SECTION 1: DAILY SNAPSHOT CARDS ───────────────────────────────
 
-function SnapshotSection() {
+function SnapshotSection({ snapshot }) {
+  if (!snapshot) return null
+
+  const cards = [
+    {
+      label: "Orders Today",
+      value: String(snapshot.ordersToday ?? 0),
+      sub: snapshot.ordersDelta >= 0
+        ? `+${snapshot.ordersDelta} vs yesterday`
+        : `${snapshot.ordersDelta} vs yesterday`,
+      up: snapshot.ordersDelta > 0 ? true : snapshot.ordersDelta < 0 ? false : null,
+    },
+    {
+      label: "Revenue Today",
+      value: `$${(snapshot.revenueToday ?? 0).toLocaleString()}`,
+      sub: snapshot.revenueDelta >= 0
+        ? `+$${snapshot.revenueDelta} vs yesterday`
+        : `-$${Math.abs(snapshot.revenueDelta)} vs yesterday`,
+      up: snapshot.revenueDelta > 0 ? true : snapshot.revenueDelta < 0 ? false : null,
+    },
+    {
+      label: "Active Designs",
+      value: String(snapshot.activeDesigns ?? 0),
+      sub: "live in the Arena",
+      up: null,
+    },
+    {
+      label: "Total Pre-orders",
+      value: String(snapshot.totalPreorders ?? 0),
+      sub: `+${snapshot.ordersToday ?? 0} today`,
+      up: (snapshot.ordersToday ?? 0) > 0 ? true : null,
+    },
+    {
+      label: "Active Creators",
+      value: String(snapshot.activeCreators ?? 0),
+      sub: "unique designers",
+      up: null,
+    },
+    {
+      label: "Funded Designs",
+      value: String(snapshot.fundedDesigns ?? 0),
+      sub: "hit threshold",
+      up: (snapshot.fundedDesigns ?? 0) > 0 ? true : null,
+    },
+  ]
+
   return (
     <div style={S.section}>
       <span style={S.sectionLabel}>OPS DASHBOARD</span>
@@ -173,7 +143,7 @@ function SnapshotSection() {
         gridTemplateColumns: "repeat(3, 1fr)",
         gap: "1rem",
       }}>
-        {SNAPSHOT_CARDS.map((card) => (
+        {cards.map((card) => (
           <div key={card.label} style={{
             background: "#0d0d0d",
             border: "1px solid #262626",
@@ -215,10 +185,12 @@ function SnapshotSection() {
 
 // ── SECTION 2: CASH FLOW BAR CHART ────────────────────────────────
 
-function CashFlowSection() {
+function CashFlowSection({ cashFlow }) {
   const [hovered, setHovered] = useState(null)
-  const maxRev = Math.max(...CASH_FLOW_DATA.map(d => d.revenue))
-  const totalRev = CASH_FLOW_DATA.reduce((s, d) => s + d.revenue, 0)
+  if (!cashFlow?.length) return null
+
+  const maxRev = Math.max(...cashFlow.map(d => d.revenue), 1)
+  const totalRev = cashFlow.reduce((s, d) => s + d.revenue, 0)
 
   return (
     <div style={S.section}>
@@ -233,18 +205,16 @@ function CashFlowSection() {
         </div>
       </div>
 
-      {/* Hover tooltip */}
       <div style={{ height: "1.4rem", marginBottom: "0.5rem" }}>
         {hovered !== null && (
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#f0f0f0" }}>
-            <span style={{ color: "#555" }}>{CASH_FLOW_DATA[hovered].date}</span>
+            <span style={{ color: "#555" }}>{cashFlow[hovered].date}</span>
             {"  "}
-            <span style={{ color: "#e8ff00" }}>${CASH_FLOW_DATA[hovered].revenue.toLocaleString()}</span>
+            <span style={{ color: "#e8ff00" }}>${cashFlow[hovered].revenue.toLocaleString()}</span>
           </div>
         )}
       </div>
 
-      {/* Bars */}
       <div style={{
         display: "flex",
         alignItems: "flex-end",
@@ -252,16 +222,16 @@ function CashFlowSection() {
         height: "160px",
         marginBottom: "6px",
       }}>
-        {CASH_FLOW_DATA.map((d, i) => {
-          const isLast = i === CASH_FLOW_DATA.length - 1
-          const pct = (d.revenue / maxRev) * 100
+        {cashFlow.map((d, i) => {
+          const isLast = i === cashFlow.length - 1
+          const pct = maxRev > 0 ? (d.revenue / maxRev) * 100 : 0
           const isHov = hovered === i
           return (
             <div
               key={i}
               style={{
                 flex: 1,
-                height: `${pct}%`,
+                height: `${Math.max(pct, 1)}%`,
                 background: isLast ? "#00ff88" : "#e8ff00",
                 opacity: isHov ? 1 : 0.65,
                 cursor: "default",
@@ -275,9 +245,8 @@ function CashFlowSection() {
         })}
       </div>
 
-      {/* X-axis labels: every 5th day */}
       <div style={{ display: "flex", gap: "3px" }}>
-        {CASH_FLOW_DATA.map((d, i) => (
+        {cashFlow.map((d, i) => (
           <div key={i} style={{
             flex: 1,
             textAlign: "center",
@@ -286,7 +255,7 @@ function CashFlowSection() {
             color: "#444",
             overflow: "hidden",
           }}>
-            {i % 5 === 0 ? d.date.replace(" ", " ") : ""}
+            {i % 5 === 0 ? d.date : ""}
           </div>
         ))}
       </div>
@@ -296,7 +265,9 @@ function CashFlowSection() {
 
 // ── SECTION 3: FUNDING DASHBOARD TABLE ────────────────────────────
 
-function FundingSection() {
+function FundingSection({ funding }) {
+  if (!funding?.length) return null
+
   return (
     <div style={S.section}>
       <span style={S.sectionLabel}>DESIGNS</span>
@@ -320,7 +291,7 @@ function FundingSection() {
             </tr>
           </thead>
           <tbody>
-            {FUNDING_DATA.map((d) => {
+            {funding.map((d) => {
               const pct = Math.min(100, Math.round((d.orders / d.goal) * 100))
               const funded = d.orders >= d.goal
               return (
@@ -452,7 +423,9 @@ function ChargebackButton({ orderId }) {
 
 // ── SECTION 4: ORDERS TABLE ────────────────────────────────────────
 
-function OrdersSection() {
+function OrdersSection({ orders }) {
+  if (!orders?.length) return null
+
   return (
     <div style={S.section}>
       <span style={S.sectionLabel}>TRANSACTIONS</span>
@@ -467,14 +440,14 @@ function OrdersSection() {
             </tr>
           </thead>
           <tbody>
-            {ORDERS_DATA.map((o) => (
+            {orders.map((o) => (
               <tr key={o.id}
                 onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 style={{ transition: "background 0.1s", verticalAlign: "top" }}
               >
                 <td style={{ ...S.td, color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.65rem" }}>{o.id}</td>
-                <td style={{ ...S.td, color: "#f0f0f0" }}>{o.email}</td>
+                <td style={{ ...S.td, color: "#f0f0f0" }}>{o.customer}</td>
                 <td style={S.td}>{o.design}</td>
                 <td style={{ ...S.td, color: "#666" }}>{o.item}</td>
                 <td style={{ ...S.td, color: "#f0f0f0" }}>{o.amount}</td>
@@ -494,7 +467,9 @@ function OrdersSection() {
 
 // ── SECTION 5: CREATOR TABLE ───────────────────────────────────────
 
-function CreatorsSection() {
+function CreatorsSection({ creators }) {
+  if (!creators?.length) return null
+
   return (
     <div style={S.section}>
       <span style={S.sectionLabel}>COMMUNITY</span>
@@ -509,7 +484,7 @@ function CreatorsSection() {
             </tr>
           </thead>
           <tbody>
-            {CREATORS_DATA.map((c) => (
+            {creators.map((c) => (
               <tr key={c.handle}
                 onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
@@ -540,6 +515,11 @@ export default function AdminPanel() {
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState(null)
 
+  // Dashboard data
+  const [dashData, setDashData]       = useState(null)
+  const [dashLoading, setDashLoading] = useState(false)
+  const [dashError, setDashError]     = useState(null)
+
   // Garment photo upload state
   const [gpGarment, setGpGarment]     = useState(GARMENT_OPTS[0].key)
   const [gpColor, setGpColor]         = useState(GARMENT_OPTS[0].colors[0])
@@ -558,6 +538,20 @@ export default function AdminPanel() {
       .then((data) => setOpen(!!data.open))
       .catch(() => setError("Couldn't load site status"))
   }, [])
+
+  useEffect(() => {
+    if (activeTab !== "dashboard") return
+    setDashLoading(true)
+    setDashError(null)
+    fetch(`${API_BASE}/dashboard?adminKey=${ADMIN_KEY}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Dashboard API returned ${r.status}`)
+        return r.json()
+      })
+      .then((data) => setDashData(data))
+      .catch((err) => setDashError(err.message || "Failed to load dashboard"))
+      .finally(() => setDashLoading(false))
+  }, [activeTab])
 
   useEffect(() => {
     setGpColor(GARMENT_OPTS.find((g) => g.key === gpGarment)?.colors[0] || "black")
@@ -683,11 +677,25 @@ export default function AdminPanel() {
       {/* Dashboard tab */}
       {activeTab === "dashboard" && (
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
-          <SnapshotSection />
-          <CashFlowSection />
-          <FundingSection />
-          <OrdersSection />
-          <CreatorsSection />
+          {dashLoading && (
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "#555", padding: "2rem 0" }}>
+              Loading dashboard…
+            </div>
+          )}
+          {dashError && (
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "#ff6666", padding: "2rem 0" }}>
+              {dashError}
+            </div>
+          )}
+          {dashData && (
+            <>
+              <SnapshotSection  snapshot={dashData.snapshot}  />
+              <CashFlowSection  cashFlow={dashData.cashFlow}  />
+              <FundingSection   funding={dashData.funding}    />
+              <OrdersSection    orders={dashData.orders}      />
+              <CreatorsSection  creators={dashData.creators}  />
+            </>
+          )}
         </main>
       )}
 

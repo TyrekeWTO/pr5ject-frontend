@@ -14,6 +14,8 @@ export default function DesignCard({ design, onOrder }) {
     garmentType,
     orderCount = 0,
     status,
+    creatorUsername,
+    creatorRank,
   } = design
 
   const imageUrl = `${CF_BASE}/designs/${designId}/image.jpg`
@@ -49,6 +51,14 @@ export default function DesignCard({ design, onOrder }) {
 
       <div className="card-overlay">
         <div className="card-overlay-title">{title}</div>
+        {creatorUsername && (
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#888", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            {creatorUsername}
+            {creatorRank && (
+              <span style={{ fontSize: "0.5rem", color: "#e8ff00", letterSpacing: "0.1em" }}>{creatorRank}</span>
+            )}
+          </div>
+        )}
         <div className="card-overlay-funding">
           {isFunded ? "Funded" : `${fundingPercent}% funded`}
         </div>
