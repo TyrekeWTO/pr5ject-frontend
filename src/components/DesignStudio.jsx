@@ -267,11 +267,16 @@ export default function DesignStudio() {
     setAiError(null)
     try {
       const token = await getIdToken()
-      const headers = { "Content-Type": "application/json" }
-      if (token) headers["Authorization"] = `Bearer ${token}`
+      if (!token) {
+        window.location.href = "/join"
+        return
+      }
       const res = await fetch(`${API_BASE}/ai/generate`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token,
+        },
         body: JSON.stringify({
           prompt: aiPrompt.trim(),
           garment: activeGarment,
