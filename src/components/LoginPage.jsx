@@ -1,11 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "login" }) }, [])
 
   const handleLogin = async () => {
     setError(null)
@@ -18,6 +21,7 @@ export default function LoginPage() {
       setError("Enter your password")
       return
     }
+    track("login_attempt")
     setLoading(true)
     try {
       const session = await signIn(trimmed, password)
@@ -25,8 +29,10 @@ export default function LoginPage() {
         window.location.assign(`/new-password?email=${encodeURIComponent(trimmed)}`)
         return
       }
+      track("login_success")
       window.location.assign("/ai")
     } catch (err) {
+      track("login_error", { message: err.message })
       setError(err.message || "Couldn't log in")
     } finally {
       setLoading(false)

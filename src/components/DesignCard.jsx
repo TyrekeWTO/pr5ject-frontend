@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { track } from "../utils/track"
 
 const THRESHOLD = 50
 const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
@@ -22,6 +23,7 @@ export default function DesignCard({ design, onOrder }) {
   const isFunded = status === "FUNDED"
 
   const handleOrder = async () => {
+    track("preorder_click", { designId })
     setOrdering(true)
     // On success onOrder redirects to Stripe Checkout (page navigates away);
     // on error/sign-in it returns and we re-enable the button.

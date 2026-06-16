@@ -1,4 +1,9 @@
+import { useEffect } from "react"
+import { track } from "../utils/track"
+
 export default function OrderSuccess() {
+  useEffect(() => { track("order_success") }, [])
+
   return (
     <div className="order-result">
       <span className="order-result-icon">✓</span>

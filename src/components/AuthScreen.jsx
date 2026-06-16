@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { signUp, confirmSignUp, signIn } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function AuthScreen({ onAuthed, onDismiss }) {
   const [step, setStep] = useState("email") // "email" | "code"
@@ -18,6 +19,7 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
     setLoading(true)
     try {
       await signUp(trimmed)
+      track("auth_code_sent")
       setEmail(trimmed)
       setStep("code")
     } catch (err) {
@@ -33,6 +35,7 @@ export default function AuthScreen({ onAuthed, onDismiss }) {
     try {
       await confirmSignUp(email, code.trim())
       await signIn(email)
+      track("auth_verified")
       onAuthed()
     } catch (err) {
       setError(err.message || "Invalid code")

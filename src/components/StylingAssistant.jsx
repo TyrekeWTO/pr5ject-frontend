@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getIdToken } from "../auth/cognito"
+import { track } from "../utils/track"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
@@ -9,8 +10,11 @@ export default function StylingAssistant() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
+  useEffect(() => { track("page_view", { page: "ai_stylist" }) }, [])
+
   const handleSubmit = async () => {
     if (!prompt.trim() || loading) return
+    track("ai_assistant_used")
     setLoading(true)
     setError(null)
     setResult(null)

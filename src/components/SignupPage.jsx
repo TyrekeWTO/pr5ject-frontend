@@ -1,11 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signUp } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "signup" }) }, [])
 
   const handleSignup = async () => {
     setError(null)
@@ -18,11 +21,14 @@ export default function SignupPage() {
       setError("Password must be at least 8 characters")
       return
     }
+    track("signup_attempt")
     setLoading(true)
     try {
       await signUp(trimmed, password)
+      track("signup_success")
       window.location.assign(`/verify?email=${encodeURIComponent(trimmed)}`)
     } catch (err) {
+      track("signup_error", { message: err.message })
       setError(err.message || "Couldn't create account")
     } finally {
       setLoading(false)

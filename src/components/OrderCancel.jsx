@@ -1,4 +1,9 @@
+import { useEffect } from "react"
+import { track } from "../utils/track"
+
 export default function OrderCancel() {
+  useEffect(() => { track("order_cancel") }, [])
+
   return (
     <div className="order-result">
       <span className="order-result-icon muted">×</span>

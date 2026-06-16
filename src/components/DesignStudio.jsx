@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { getIdToken } from "../auth/cognito"
+import { track } from "../utils/track"
 import "./DesignStudio.css"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
@@ -144,6 +145,8 @@ export default function DesignStudio() {
   if (activeGarment === "star-shorts" && activeView === "front" && activeColor === "black") {
     console.log("[DesignStudio] shorts/front/black resolved src:", imgSrc)
   }
+
+  useEffect(() => { track("page_view", { page: "studio" }) }, [])
 
   // First-visit tour
   useEffect(() => {
@@ -290,6 +293,7 @@ export default function DesignStudio() {
 
   // 360 view
   const handle360View = async () => {
+    track("studio_360_view", { garment: activeGarment, color: activeColor })
     const token = await getIdToken()
     if (!token) { window.location.href = "/join"; return }
     setView360Loading(true)
@@ -343,6 +347,7 @@ export default function DesignStudio() {
   // File upload
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files).slice(0, 3 - thumbnails.length)
+    if (files.length > 0) track("studio_upload", { count: files.length })
     files.forEach((file) => {
       const reader = new FileReader()
       reader.onload = (ev) => {
@@ -412,6 +417,7 @@ export default function DesignStudio() {
   }
 
   const handleSnapshot = async () => {
+    track("studio_snapshot", { garment: activeGarment, color: activeColor })
     const dataURL = await captureSnapshot()
     const a = document.createElement("a")
     a.href = dataURL
@@ -469,6 +475,7 @@ export default function DesignStudio() {
   const handleAiGenerate = async () => {
     const prompt = aiAssembledPrompt.trim()
     if (!prompt || aiLoading) return
+    track("studio_ai_generate", { garment: activeGarment })
     setAiLoading(true)
     setAiError(null)
     setAiRetryCountdown(null)
@@ -523,6 +530,7 @@ export default function DesignStudio() {
   // Pre-order submit
   const handlePreorder = async () => {
     if (!selectedSize || submitting) return
+    track("studio_preorder", { garment: activeGarment, color: activeColor, size: selectedSize })
     setSubmitting(true)
     setSubmitError(null)
 

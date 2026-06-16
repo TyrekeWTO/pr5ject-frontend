@@ -19,6 +19,7 @@ import AdminPanel from "./components/AdminPanel"
 import ComingSoon from "./components/ComingSoon"
 import DesignStudio from "./components/DesignStudio"
 import { getCurrentUser, signOut, getIdToken } from "./auth/cognito"
+import { track } from "./utils/track"
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
 export default function App() {
@@ -37,6 +38,8 @@ export default function App() {
 
   // Whether the site is open to visitors (null while loading)
   const [siteOpen, setSiteOpen] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "home" }) }, [])
 
   // Check for an existing session on load
   useEffect(() => {
@@ -126,6 +129,7 @@ export default function App() {
   }
 
   const handleSubmitOpen = () => {
+    track("submit_open")
     if (!user) {
       setPendingAction(() => () => setShowSubmit(true))
       setShowAuth(true)

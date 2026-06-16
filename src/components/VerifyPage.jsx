@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { confirmSignUp } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function VerifyPage() {
   const params = new URLSearchParams(window.location.search)
@@ -7,6 +8,8 @@ export default function VerifyPage() {
   const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => { track("page_view", { page: "verify" }) }, [])
 
   const handleConfirm = async () => {
     setError(null)
@@ -19,11 +22,14 @@ export default function VerifyPage() {
       setError("Enter the confirmation code")
       return
     }
+    track("verify_attempt")
     setLoading(true)
     try {
       await confirmSignUp(trimmed, code.trim())
+      track("verify_success")
       window.location.assign("/login")
     } catch (err) {
+      track("verify_error", { message: err.message })
       setError(err.message || "Invalid code")
     } finally {
       setLoading(false)

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react"
 import { getCurrentUser, signOut } from "../auth/cognito"
+import { track } from "../utils/track"
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null)
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
+    track("page_view", { page: "profile" })
     getCurrentUser().then((u) => {
       setUser(u)
       setChecked(true)
@@ -13,6 +15,7 @@ export default function ProfilePage() {
   }, [])
 
   const handleSignOut = () => {
+    track("sign_out")
     signOut()
     window.location.assign("/")
   }

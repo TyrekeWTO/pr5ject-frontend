@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { getIdToken } from "../auth/cognito"
+import { track } from "../utils/track"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 
@@ -39,6 +40,7 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
 
   const handleAiAssist = async () => {
     if (!aiPrompt.trim() || aiLoading) return
+    track("ai_assist_used")
     setAiLoading(true)
     setAiReasoning(null)
     try {
@@ -82,6 +84,7 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
 
   const handleFeasibility = async () => {
     if (feasibilityLoading) return
+    track("feasibility_checked")
     setFeasibilityLoading(true)
     setFeasibility(null)
     try {
@@ -137,6 +140,7 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
       }
 
       const { designId } = await res.json()
+      track("design_submitted", { garmentType })
 
       if (imageFile && designId) {
         setUploadingImage(true)
