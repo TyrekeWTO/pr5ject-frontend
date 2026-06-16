@@ -5,6 +5,8 @@ import "./DesignStudio.css"
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
 
+const STYLE_CONTEXT = "Streetwear graphic design for acid-washed heavy cotton garments. Style: dark, gritty, high-contrast. Influences: Y2K chrome hardware, distressed textures, hand-script typography. Color palette: black, charcoal, faded pink, silver metallic. Output should be a flat graphic suitable for screen printing or embroidery. Transparent or white background."
+
 const GARMENTS = {
   "star-shorts": {
     name: "Star Shorts",
@@ -62,6 +64,7 @@ export default function DesignStudio() {
   const [aiModalOpen, setAiModalOpen]     = useState(false)
   const [aiPrompt, setAiPrompt]           = useState("")
   const [aiLoading, setAiLoading]         = useState(false)
+  const [aiError, setAiError]             = useState(null)
   const [submitting, setSubmitting]       = useState(false)
   const [submitError, setSubmitError]     = useState(null)
   const [toast, setToast]                 = useState(null)
@@ -241,34 +244,51 @@ export default function DesignStudio() {
     a.click()
   }
 
+  // Open AI modal — redirect to /join if not logged in
+  const handleOpenAiModal = async () => {
+    const token = await getIdToken()
+    if (!token) {
+      window.location.href = "/join"
+      return
+    }
+    setAiError(null)
+    setAiModalOpen(true)
+  }
+
   // AI generate
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim() || aiLoading) return
     setAiLoading(true)
+    setAiError(null)
     try {
-      const token = await getIdToken().catch(() => null)
+      const token = await getIdToken()
       const headers = { "Content-Type": "application/json" }
       if (token) headers["Authorization"] = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ feature: "generate", prompt: aiPrompt.trim(), garment: activeGarment }),
+        body: JSON.stringify({
+          prompt: aiPrompt.trim(),
+          garment: activeGarment,
+          color: activeColor,
+          styleContext: STYLE_CONTEXT,
+        }),
       })
       if (!res.ok) throw new Error("AI generation failed")
       const data = await res.json()
       const url = data.imageUrl || data.url || data.image
-      if (url) {
-        const entry = { id: `ai-${Date.now()}`, url, file: null }
-        setThumbnails((prev) => {
-          const next = prev.length >= 3 ? [...prev.slice(0, 2), entry] : [...prev, entry]
-          setActiveThumbIdx(next.length - 1)
-          return next
-        })
-        setAiModalOpen(false)
-        setAiPrompt("")
-      }
+      if (!url) throw new Error("No image returned")
+      const entry = { id: `ai-${Date.now()}`, url, file: null }
+      setThumbnails((prev) => {
+        const next = prev.length >= 3 ? [...prev.slice(0, 2), entry] : [...prev, entry]
+        setActiveThumbIdx(next.length - 1)
+        return next
+      })
+      setAiModalOpen(false)
+      setAiPrompt("")
     } catch (err) {
       console.warn("AI generate:", err)
+      setAiError("Generation failed — try again")
     } finally {
       setAiLoading(false)
     }
@@ -512,7 +532,7 @@ export default function DesignStudio() {
 
             {/* AI + Snapshot */}
             <div className="ds-section ds-action-row">
-              <button className="ds-ai-btn" onClick={() => setAiModalOpen(true)}>
+              <button className="ds-ai-btn" onClick={handleOpenAiModal}>
                 ✦ AI DESIGN
               </button>
               <button className="ds-snapshot-btn" onClick={handleSnapshot}>
@@ -551,10 +571,10 @@ export default function DesignStudio() {
       {aiModalOpen && (
         <div
           className="ds-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && setAiModalOpen(false)}
+          onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) { setAiModalOpen(false); setAiError(null) } }}
         >
           <div className="ds-modal-box">
-            <button className="ds-modal-close" onClick={() => setAiModalOpen(false)}>✕</button>
+            <button className="ds-modal-close" onClick={() => { setAiModalOpen(false); setAiError(null) }} disabled={aiLoading}>✕</button>
             <span className="ds-section-label">AI DESIGN GENERATOR</span>
             <h3 className="ds-modal-title">Describe Your Design</h3>
             <p className="ds-modal-sub">
@@ -567,17 +587,19 @@ export default function DesignStudio() {
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+              disabled={aiLoading}
               autoFocus
             />
+            {aiError && <p className="ds-modal-error">{aiError}</p>}
             <div className="ds-modal-actions">
               <button
                 className="ds-modal-gen-btn"
                 onClick={handleAiGenerate}
                 disabled={aiLoading || !aiPrompt.trim()}
               >
-                {aiLoading ? "GENERATING..." : "GENERATE"}
+                {aiLoading ? <><span className="ds-spinner" /> GENERATING...</> : "GENERATE"}
               </button>
-              <button className="ds-modal-cancel-btn" onClick={() => setAiModalOpen(false)}>
+              <button className="ds-modal-cancel-btn" onClick={() => { setAiModalOpen(false); setAiError(null) }} disabled={aiLoading}>
                 CANCEL
               </button>
             </div>
