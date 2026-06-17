@@ -4,6 +4,7 @@ import { track } from "../utils/track"
 import "./DesignStudio.css"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
+const AI_GENERATE_URL = import.meta.env.VITE_AI_GENERATE_URL || `${API_BASE}/ai/generate`
 
 const STYLE_CONTEXT = "Streetwear graphic design for acid-washed heavy cotton garments. Style: dark, gritty, high-contrast. Influences: Y2K chrome hardware, distressed textures, hand-script typography. Color palette: black, charcoal, faded pink, silver metallic. Output should be a flat graphic suitable for screen printing or embroidery. Transparent or white background."
 
@@ -49,7 +50,7 @@ const GARMENTS = {
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
 const LOADING_TIPS = [
-  "Nova Canvas is generating your design...",
+  "Stable Image Core is generating your design...",
   "Creating streetwear-optimized graphic...",
   "Applying PR5JECT style...",
 ]
@@ -482,7 +483,7 @@ export default function DesignStudio() {
     try {
       const token = await getIdToken()
       if (!token) { window.location.href = "/join"; return }
-      const res = await fetch(`${API_BASE}/ai/generate`, {
+      const res = await fetch(AI_GENERATE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
         body: JSON.stringify({ prompt, garment: activeGarment, color: activeColor, styleContext: STYLE_CONTEXT }),

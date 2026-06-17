@@ -3,6 +3,7 @@ import { getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
+const AI_GENERATE_URL = import.meta.env.VITE_AI_GENERATE_URL || `${API_BASE}/ai/generate`
 
 export default function DesignGenerator() {
   const [prompt, setPrompt] = useState("")
@@ -19,13 +20,13 @@ export default function DesignGenerator() {
     setResult(null)
     try {
       const token = await getIdToken()
-      const res = await fetch(`${API_BASE}/ai`, {
+      const res = await fetch(AI_GENERATE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ feature: "assistant", prompt: prompt.trim() }),
+        body: JSON.stringify({ prompt: prompt.trim(), styleContext: "" }),
       })
       if (!res.ok) throw new Error("AI request failed")
       const data = await res.json()
