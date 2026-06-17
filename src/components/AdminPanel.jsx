@@ -886,6 +886,446 @@ function SmsAdminSection({ apiBase, adminKey }) {
   )
 }
 
+// ── DMCA SECTION ─────────────────────────────────────────────────
+
+function DmcaSection({ apiBase, adminKey }) {
+  const [reports, setReports] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actions, setActions] = useState({})
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${apiBase}/admin/dmca`, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.ok ? r.json() : { reports: [] })
+      .then(d => setReports(d.reports || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const act = async (reportId, action) => {
+    setActions(a => ({ ...a, [reportId]: "..." }))
+    try {
+      const r = await fetch(`${apiBase}/admin/dmca/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ reportId, action }),
+      })
+      const d = await r.json()
+      setActions(a => ({ ...a, [reportId]: action }))
+    } catch {
+      setActions(a => ({ ...a, [reportId]: "ERROR" }))
+    }
+  }
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div><span style={S.sectionLabel}>COPYRIGHT</span><p style={{ ...S.sectionTitle, margin: 0 }}>DMCA Reports</p></div>
+          <button onClick={load} style={{ background: "none", border: "1px solid #333", color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em", padding: "0.3rem 0.75rem", cursor: "pointer" }}>REFRESH</button>
+        </div>
+        {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+        {!loading && reports.length === 0 && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#555", padding: "1rem 0" }}>No DMCA reports.</div>}
+        {!loading && reports.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Date","ID","Reporter","Design ID","Status","Actions"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {reports.map(r => {
+                  const done = actions[r.reportId] && actions[r.reportId] !== "..."
+                  return (
+                    <tr key={r.reportId} style={{ opacity: done ? 0.5 : 1 }}>
+                      <td style={S.td}>{r.createdAt?.slice(0, 10)}</td>
+                      <td style={{ ...S.td, color: "#555", fontSize: "0.6rem" }}>{r.reportId?.slice(0, 8)}</td>
+                      <td style={S.td}>{r.reporterEmail}</td>
+                      <td style={{ ...S.td, color: "#e8ff00" }}>{r.designId?.slice(0, 12)}</td>
+                      <td style={S.td}>
+                        <span style={{ color: r.status === "PENDING" ? "#e8ff00" : r.status === "TAKEDOWN" ? "#ff4444" : "#555", fontSize: "0.6rem", textTransform: "uppercase" }}>{r.status || "PENDING"}</span>
+                      </td>
+                      <td style={S.td}>
+                        {done ? (
+                          <span style={{ color: "#00ff88", fontSize: "0.6rem" }}>{actions[r.reportId]}</span>
+                        ) : (
+                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                            {[["TAKEDOWN","#ff4444"],["REJECT","#555"],["INFO","#e8ff00"]].map(([action, color]) => (
+                              <button key={action} onClick={() => act(r.reportId, action)} style={{ background: "none", border: `1px solid ${color}44`, color, fontFamily: "'DM Mono', monospace", fontSize: "0.5rem", letterSpacing: "0.1em", padding: "0.2rem 0.4rem", cursor: "pointer" }}>{action}</button>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
+
+// ── SUPPORT SECTION ───────────────────────────────────────────────
+
+function SupportSection({ apiBase, adminKey }) {
+  const [tickets, setTickets] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState("ALL")
+  const [actions, setActions] = useState({})
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${apiBase}/admin/support/tickets/all`, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.ok ? r.json() : { tickets: [] })
+      .then(d => setTickets(d.tickets || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const act = async (ticketId, action) => {
+    setActions(a => ({ ...a, [ticketId]: "..." }))
+    try {
+      const r = await fetch(`${apiBase}/admin/support/tickets/${ticketId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ action }),
+      })
+      setActions(a => ({ ...a, [ticketId]: action }))
+    } catch {
+      setActions(a => ({ ...a, [ticketId]: "ERROR" }))
+    }
+  }
+
+  const PRIORITY_COLORS = { LOW: "#555", MEDIUM: "#888", HIGH: "#e8ff00", URGENT: "#ff4444" }
+  const STATUS_COLORS2 = { OPEN: "#e8ff00", IN_PROGRESS: "#64b4ff", RESOLVED: "#00ff88" }
+  const FILTERS = ["ALL","OPEN","IN_PROGRESS","RESOLVED","URGENT"]
+
+  const filtered = filter === "ALL" ? tickets : filter === "URGENT" ? tickets.filter(t => t.priority === "URGENT") : tickets.filter(t => t.status === filter)
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div><span style={S.sectionLabel}>HELP DESK</span><p style={{ ...S.sectionTitle, margin: 0 }}>Support Tickets</p></div>
+          <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+            {FILTERS.map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{ background: filter === f ? "#e8ff00" : "none", border: `1px solid ${filter === f ? "#e8ff00" : "#333"}`, color: filter === f ? "#000" : "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.5rem", letterSpacing: "0.1em", padding: "0.25rem 0.5rem", cursor: "pointer" }}>{f}</button>
+            ))}
+            <button onClick={load} style={{ background: "none", border: "1px solid #333", color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.5rem", letterSpacing: "0.1em", padding: "0.25rem 0.5rem", cursor: "pointer" }}>REFRESH</button>
+          </div>
+        </div>
+        {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+        {!loading && filtered.length === 0 && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#555" }}>No tickets.</div>}
+        {!loading && filtered.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Date","ID","Subject","Priority","Status","Actions"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {filtered.map(t => {
+                  const done = actions[t.ticketId] && actions[t.ticketId] !== "..."
+                  return (
+                    <tr key={t.ticketId}>
+                      <td style={S.td}>{t.createdAt?.slice(0, 10)}</td>
+                      <td style={{ ...S.td, color: "#555", fontSize: "0.6rem" }}>{t.ticketId?.slice(0, 8)}</td>
+                      <td style={{ ...S.td, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</td>
+                      <td style={S.td}><span style={{ color: PRIORITY_COLORS[t.priority] || "#555", fontSize: "0.6rem" }}>{t.priority}</span></td>
+                      <td style={S.td}><span style={{ color: STATUS_COLORS2[t.status] || "#555", fontSize: "0.6rem" }}>{t.status}</span></td>
+                      <td style={S.td}>
+                        {done ? (
+                          <span style={{ color: "#00ff88", fontSize: "0.6rem" }}>{actions[t.ticketId]}</span>
+                        ) : (
+                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                            {[["RESOLVE","#00ff88"],["ESCALATE","#ff4444"]].map(([action, color]) => (
+                              <button key={action} onClick={() => act(t.ticketId, action)} style={{ background: "none", border: `1px solid ${color}44`, color, fontFamily: "'DM Mono', monospace", fontSize: "0.5rem", letterSpacing: "0.1em", padding: "0.2rem 0.4rem", cursor: "pointer" }}>{action}</button>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
+
+// ── REPUTATION SECTION ────────────────────────────────────────────
+
+function ReputationSection({ apiBase, adminKey }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`${apiBase}/admin/reputation`, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.ok ? r.json() : null)
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+      {data && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+            {[
+              { label: "Brand Health Score", val: data.brandHealthScore?.toFixed(1) || "—", color: data.brandHealthScore >= 70 ? "#00ff88" : "#e8ff00" },
+              { label: "Avg Sentiment", val: data.avgSentiment?.toFixed(1) || "—", color: "#e8ff00" },
+              { label: "Resolution Rate", val: data.resolutionRate ? `${(data.resolutionRate * 100).toFixed(0)}%` : "—", color: "#64b4ff" },
+            ].map(c => (
+              <div key={c.label} style={{ background: "#141414", border: "1px solid #262626", padding: "1.25rem 1.5rem" }}>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#555", marginBottom: "0.5rem" }}>{c.label}</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.5rem", color: c.color, letterSpacing: "0.05em" }}>{c.val}</div>
+              </div>
+            ))}
+          </div>
+
+          {data.recentScans?.length > 0 && (
+            <div style={S.section}>
+              <span style={S.sectionLabel}>SENTIMENT TREND</span>
+              <p style={S.sectionTitle}>Daily Scans</p>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "100px", marginBottom: "0.5rem" }}>
+                {data.recentScans.map((s, i) => {
+                  const pct = (s.avgScore || 50)
+                  return (
+                    <div key={i} title={`${s.date}: ${pct.toFixed(0)}`} style={{ flex: 1, height: `${pct}%`, background: pct >= 70 ? "#00ff88" : pct >= 50 ? "#e8ff00" : "#ff4444", opacity: 0.7, minWidth: 0 }} />
+                  )
+                })}
+              </div>
+              <div style={{ display: "flex", gap: "3px" }}>
+                {data.recentScans.map((s, i) => (
+                  <div key={i} style={{ flex: 1, fontFamily: "'DM Mono', monospace", fontSize: "0.45rem", color: "#333", textAlign: "center", overflow: "hidden" }}>
+                    {i % 3 === 0 ? s.date?.slice(5) : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.ticketsByPriority && (
+            <div style={S.section}>
+              <span style={S.sectionLabel}>VOLUME</span>
+              <p style={S.sectionTitle}>Tickets by Priority</p>
+              {Object.entries(data.ticketsByPriority).map(([priority, count]) => (
+                <div key={priority} style={{ marginBottom: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#aaa" }}>{priority}</span>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", color: "#e8ff00" }}>{count}</span>
+                  </div>
+                  <div style={{ height: "3px", background: "#1a1a1a" }}>
+                    <div style={{ height: "100%", width: `${Math.min(100, count * 10)}%`, background: priority === "URGENT" ? "#ff4444" : "#e8ff00" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {data.recentAlerts?.length > 0 && (
+            <div style={S.section}>
+              <span style={S.sectionLabel}>ALERTS</span>
+              {data.recentAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "0.6rem 0", borderBottom: "1px solid #1a1a1a", fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#ff6666" }}>{a}</div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </main>
+  )
+}
+
+// ── SUPPLIERS SECTION ─────────────────────────────────────────────
+
+function SuppliersSection({ apiBase, adminKey }) {
+  const [manufacturers, setManufacturers] = useState([])
+  const [quality, setQuality] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [form, setForm] = useState({ name: "", country: "", contactEmail: "", contactPhone: "", notes: "" })
+  const [saving, setSaving] = useState(false)
+  const [survival, setSurvival] = useState(null)
+  const [survivalLoading, setSurvivalLoading] = useState(true)
+
+  const loadAll = () => {
+    setLoading(true)
+    Promise.all([
+      fetch(`${apiBase}/admin/manufacturers`, { headers: { "x-admin-key": adminKey } }).then(r => r.ok ? r.json() : { manufacturers: [] }),
+      fetch(`${apiBase}/admin/quality/reports`, { headers: { "x-admin-key": adminKey } }).then(r => r.ok ? r.json() : { reports: [] }),
+    ]).then(([m, q]) => {
+      setManufacturers(m.manufacturers || [])
+      setQuality(q.reports || [])
+    }).catch(() => {}).finally(() => setLoading(false))
+  }
+
+  const loadSurvival = () => {
+    setSurvivalLoading(true)
+    fetch(`${apiBase}/admin/survival-check`, { headers: { "x-admin-key": adminKey } })
+      .then(r => r.ok ? r.json() : null)
+      .then(setSurvival)
+      .catch(() => {})
+      .finally(() => setSurvivalLoading(false))
+  }
+
+  useEffect(() => { loadAll(); loadSurvival() }, [])
+
+  const addManufacturer = async () => {
+    setSaving(true)
+    try {
+      const r = await fetch(`${apiBase}/admin/manufacturers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(form),
+      })
+      if (r.ok) {
+        setShowAdd(false)
+        setForm({ name: "", country: "", contactEmail: "", contactPhone: "", notes: "" })
+        loadAll()
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const setRole = async (id, role) => {
+    try {
+      await fetch(`${apiBase}/admin/manufacturers/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ role }),
+      })
+      loadAll()
+    } catch {}
+  }
+
+  const del = async (id) => {
+    if (!window.confirm("Delete this manufacturer?")) return
+    try {
+      await fetch(`${apiBase}/admin/manufacturers/${id}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": adminKey },
+      })
+      loadAll()
+    } catch {}
+  }
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      {/* Survival Check */}
+      {!survivalLoading && survival && (
+        <div style={{ ...S.section, borderColor: survival.survivalScore?.split("/")[0] >= 6 ? "#1a1a1a" : "#ff444444" }}>
+          <span style={S.sectionLabel}>BUSINESS CONTINUITY</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "3rem", color: parseInt(survival.survivalScore) >= 6 ? "#00ff88" : "#ff4444", letterSpacing: "0.05em", lineHeight: 1 }}>{survival.survivalScore}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#555", letterSpacing: "0.2em", textTransform: "uppercase" }}>Survival Score</div>
+            </div>
+            {survival.gaps?.length > 0 && (
+              <div>
+                {survival.gaps.map((gap, i) => (
+                  <div key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "#ff6666", marginBottom: "0.25rem" }}>⚠ {gap}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Manufacturers */}
+      <div style={S.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div><span style={S.sectionLabel}>SUPPLY CHAIN</span><p style={{ ...S.sectionTitle, margin: 0 }}>Manufacturers</p></div>
+          <button onClick={() => setShowAdd(s => !s)} style={{ background: showAdd ? "#e8ff00" : "none", border: "1px solid #e8ff00", color: showAdd ? "#000" : "#e8ff00", fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em", padding: "0.3rem 0.75rem", cursor: "pointer" }}>
+            {showAdd ? "CANCEL" : "ADD MANUFACTURER"}
+          </button>
+        </div>
+
+        {showAdd && (
+          <div style={{ background: "#0d0d0d", border: "1px solid #262626", padding: "1.25rem", marginBottom: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              {[["name","Name *"],["country","Country"],["contactEmail","Email"],["contactPhone","Phone"]].map(([k, label]) => (
+                <div key={k}>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#555", marginBottom: "0.3rem", textTransform: "uppercase", letterSpacing: "0.15em" }}>{label}</div>
+                  <input style={{ background: "#141414", border: "1px solid #333", color: "#f0f0f0", fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", padding: "0.5rem 0.65rem", width: "100%", boxSizing: "border-box", outline: "none" }}
+                    value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", color: "#555", marginBottom: "0.3rem", textTransform: "uppercase", letterSpacing: "0.15em" }}>Notes</div>
+              <textarea style={{ background: "#141414", border: "1px solid #333", color: "#f0f0f0", fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", padding: "0.5rem 0.65rem", width: "100%", boxSizing: "border-box", outline: "none", minHeight: "50px", resize: "vertical" }}
+                value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <button onClick={addManufacturer} disabled={saving || !form.name} style={{ marginTop: "0.75rem", background: "#e8ff00", border: "none", color: "#000", fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", letterSpacing: "0.15em", padding: "0.5rem 1.25rem", cursor: "pointer" }}>
+              {saving ? "SAVING..." : "SAVE"}
+            </button>
+          </div>
+        )}
+
+        {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+        {!loading && manufacturers.length === 0 && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#555" }}>No manufacturers on file.</div>}
+        {!loading && manufacturers.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Name","Country","Email","Role","Actions"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {manufacturers.map(m => (
+                  <tr key={m.id}>
+                    <td style={{ ...S.td, color: "#f0f0f0" }}>{m.name}</td>
+                    <td style={S.td}>{m.country}</td>
+                    <td style={S.td}>{m.contactEmail}</td>
+                    <td style={S.td}><span style={{ color: m.role === "primary" ? "#00ff88" : m.role === "backup" ? "#e8ff00" : "#555", fontSize: "0.6rem", textTransform: "uppercase" }}>{m.role || "none"}</span></td>
+                    <td style={S.td}>
+                      <div style={{ display: "flex", gap: "0.25rem" }}>
+                        {[["PRIMARY","primary","#00ff88"],["BACKUP","backup","#e8ff00"]].map(([label, role, color]) => (
+                          <button key={role} onClick={() => setRole(m.id, role)} style={{ background: "none", border: `1px solid ${color}44`, color, fontFamily: "'DM Mono', monospace", fontSize: "0.45rem", letterSpacing: "0.1em", padding: "0.2rem 0.35rem", cursor: "pointer" }}>{label}</button>
+                        ))}
+                        <button onClick={() => del(m.id)} style={{ background: "none", border: "1px solid #ff444444", color: "#ff6666", fontFamily: "'DM Mono', monospace", fontSize: "0.45rem", letterSpacing: "0.1em", padding: "0.2rem 0.35rem", cursor: "pointer" }}>DEL</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Quality Reports */}
+      {quality.length > 0 && (
+        <div style={S.section}>
+          <span style={S.sectionLabel}>QUALITY</span>
+          <p style={S.sectionTitle}>Quality Reports</p>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Date","Manufacturer","Score","Issue","Notes"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {quality.map(q => (
+                  <tr key={q.reportId}>
+                    <td style={S.td}>{q.createdAt?.slice(0, 10)}</td>
+                    <td style={{ ...S.td, color: "#f0f0f0" }}>{q.manufacturerName || q.manufacturerId}</td>
+                    <td style={{ ...S.td, color: q.qualityScore >= 7 ? "#00ff88" : "#ff4444" }}>{q.qualityScore}/10</td>
+                    <td style={S.td}>{q.issueType}</td>
+                    <td style={{ ...S.td, maxWidth: 250, overflow: "hidden", textOverflow: "ellipsis" }}>{q.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
+
 export default function AdminPanel() {
   const [activeTab, setActiveTab]     = useState("dashboard")
   const [open, setOpen]               = useState(null)
@@ -1039,11 +1479,15 @@ export default function AdminPanel() {
   }
 
   const TABS = [
-    { id: "dashboard", label: "OPS DASHBOARD" },
-    { id: "funnel",    label: "FUNNEL"        },
-    { id: "fraud",     label: "FRAUD"         },
-    { id: "sms",       label: "SMS"           },
-    { id: "tools",     label: "TOOLS"         },
+    { id: "dashboard",  label: "OPS DASHBOARD" },
+    { id: "funnel",     label: "FUNNEL"        },
+    { id: "fraud",      label: "FRAUD"         },
+    { id: "dmca",       label: "DMCA"          },
+    { id: "support",    label: "SUPPORT"       },
+    { id: "reputation", label: "REPUTATION"    },
+    { id: "suppliers",  label: "SUPPLIERS"     },
+    { id: "sms",        label: "SMS"           },
+    { id: "tools",      label: "TOOLS"         },
   ]
 
   return (
@@ -1138,6 +1582,26 @@ export default function AdminPanel() {
       {/* Fraud tab */}
       {activeTab === "fraud" && (
         <FraudSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* DMCA tab */}
+      {activeTab === "dmca" && (
+        <DmcaSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* Support tab */}
+      {activeTab === "support" && (
+        <SupportSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* Reputation tab */}
+      {activeTab === "reputation" && (
+        <ReputationSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* Suppliers tab */}
+      {activeTab === "suppliers" && (
+        <SuppliersSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
       )}
 
       {/* SMS tab */}

@@ -24,6 +24,10 @@ import DesignStudio from "./components/DesignStudio"
 import TermsPage from "./components/TermsPage"
 import PrivacyPage from "./components/PrivacyPage"
 import CreatorAgreementPage from "./components/CreatorAgreementPage"
+import DashboardPage from "./components/DashboardPage"
+import CreatorProfilePage from "./components/CreatorProfilePage"
+import DmcaPage from "./components/DmcaPage"
+import SupportPage from "./components/SupportPage"
 import { getCurrentUser, signOut, getIdToken } from "./auth/cognito"
 import { track } from "./utils/track"
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
@@ -237,6 +241,10 @@ export default function App() {
   if (path === "/terms") return <TermsPage />
   if (path === "/privacy") return <PrivacyPage />
   if (path === "/creator-agreement") return <CreatorAgreementPage />
+  if (path === "/dashboard") return <DashboardPage />
+  if (path.startsWith("/creator/")) return <CreatorProfilePage />
+  if (path === "/dmca") return <DmcaPage />
+  if (path === "/support") return <SupportPage />
 
   if (!authChecked) return null
 
