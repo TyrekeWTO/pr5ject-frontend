@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { getCurrentUser, getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
 
@@ -28,6 +28,8 @@ export default function SupportPage() {
   const [ticketId, setTicketId] = useState("")
   const [tickets, setTickets] = useState([])
   const [error, setError] = useState("")
+  const [showHomeBtn, setShowHomeBtn] = useState(false)
+  const homeBtnTimer = useRef(null)
 
   useEffect(() => {
     track("page_view", { page: "support" })
@@ -69,6 +71,9 @@ export default function SupportPage() {
       if (r.ok) {
         setTicketId(data.ticketId)
         setDone(true)
+        setShowHomeBtn(true)
+        clearTimeout(homeBtnTimer.current)
+        homeBtnTimer.current = setTimeout(() => setShowHomeBtn(false), 10000)
       } else {
         setError(data.error || "Submission failed.")
       }
@@ -141,6 +146,15 @@ export default function SupportPage() {
           </div>
         )}
       </div>
+
+      {showHomeBtn && (
+        <a href="/" style={{
+          position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 200,
+          fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", letterSpacing: "0.2em",
+          textTransform: "uppercase", background: "#e8ff00", color: "#000",
+          padding: "0.6rem 1.2rem", textDecoration: "none",
+        }}>⌂ HOME</a>
+      )}
     </div>
   )
 }

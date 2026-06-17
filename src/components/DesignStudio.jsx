@@ -4,41 +4,50 @@ import { track } from "../utils/track"
 import "./DesignStudio.css"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
-const CF_BASE = "https://d1wxtx6tyeb7i0.cloudfront.net"
 
 const STYLE_CONTEXT = "Streetwear graphic design for acid-washed heavy cotton garments. Style: dark, gritty, high-contrast. Influences: Y2K chrome hardware, distressed textures, hand-script typography. Color palette: black, charcoal, faded pink, silver metallic. Output should be a flat graphic suitable for screen printing or embroidery. Transparent or white background."
 
-const GARMENT_TIPS = {
-  "star-shorts": "Best placement: front chest or center back",
-  "five-hoodie": "Hood and chest panel work best for bold graphics",
-}
-
 const GARMENTS = {
-  "star-shorts": {
+  shorts: {
     name: "Star Shorts",
-    views: {
-      front: { black: "/garments/shorts-front-black.jpg", pink: "/garments/shorts-back-pink.jpg", sand: null, olive: null },
-      back:  { black: "/garments/shorts-back-black.jpg",  pink: "/garments/shorts-back-pink.jpg", sand: null, olive: null },
+    views: ["front", "back", "side"],
+    colors: {
+      black: {
+        front: "/garments/shorts-front-black.jpg",
+        back:  "/garments/shorts-back-black.jpg",
+        side:  "/garments/shorts-side-black.jpg",
+      },
+      pink: {
+        front: "/garments/shorts-front-pink.jpg",
+        back:  "/garments/shorts-back-pink.jpg",
+        side:  "/garments/shorts-side-pink.jpg",
+      },
     },
-    colors: ["black", "pink", "sand", "olive"],
-    colorSwatches: { black: "#1a1a1a", pink: "#e0457b", sand: "#c8b89a", olive: "#6b7c47" },
-    overlayZone: { view: "front", top: "22%", left: "18%", width: "64%", height: "38%", label: "Front Graphic Area" },
+    colorSwatches: { black: "#1a1a1a", pink: "#e0457b" },
+    overlayZone: {
+      front: { top: "20%", left: "25%", width: "50%", height: "40%", label: "Front Graphic Area" },
+      back:  { top: "25%", left: "30%", width: "40%", height: "35%", label: "Back Graphic Area" },
+      side:  { top: "20%", left: "20%", width: "60%", height: "40%", label: "Side Graphic Area" },
+    },
   },
-  "five-hoodie": {
+  hoodie: {
     name: "Five Hoodie",
-    views: {
-      front: { black: "/garments/hoodie-front-black.png", sand: null, olive: null, crimson: null },
-      back:  { black: null, sand: null, olive: null, crimson: null },
+    views: ["front", "back"],
+    colors: {
+      black: {
+        front: "/garments/hoodie-front-black.png",
+        back:  "/garments/hoodie-back-black.png",
+      },
     },
-    colors: ["black", "sand", "olive", "crimson"],
-    colorSwatches: { black: "#2a2a2a", sand: "#c8b89a", olive: "#6b7c47", crimson: "#9b1c1c" },
-    overlayZone: { view: "back", top: "14%", left: "15%", width: "70%", height: "62%", label: "Back Panel" },
+    colorSwatches: { black: "#2a2a2a" },
+    overlayZone: {
+      front: { top: "25%", left: "30%", width: "40%", height: "35%", label: "Chest Panel" },
+      back:  { top: "15%", left: "20%", width: "60%", height: "50%",  label: "Back Panel" },
+    },
   },
 }
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
-const GRAPHIC_TYPES = ["STAR", "FLAME", "LIGHTNING", "SKULL", "ABSTRACT", "TEXT ONLY", "CUSTOM"]
-const STYLE_OPTIONS = ["CHROME", "GRUNGE", "MINIMAL", "BOLD", "HAND-DRAWN", "GLITCH"]
 const LOADING_TIPS = [
   "Nova Canvas is generating your design...",
   "Creating streetwear-optimized graphic...",
@@ -50,6 +59,12 @@ const TOUR_STEPS = [
   { label: "Choose your colorway", target: "color" },
   { label: "Describe your design and let AI build it", target: "ai" },
   { label: "Or upload your own graphic", target: "upload" },
+]
+
+const QUICK_STARTS = [
+  { label: "SOMETHING BOLD & LOUD", message: "I want something bold and loud — big graphic, high contrast, aggressive energy" },
+  { label: "CLEAN & MINIMAL", message: "I'm going for clean and minimal — subtle, understated, premium vibes" },
+  { label: "I HAVE AN IDEA — LET ME DESCRIBE IT", message: null },
 ]
 
 function parsePct(s) { return parseFloat(s) }
@@ -72,26 +87,14 @@ function dataURLToBlob(dataURL) {
   return new Blob([arr], { type: mime })
 }
 
-function buildPrompt(graphicType, customType, style, text) {
-  const graphic = graphicType === "CUSTOM" ? (customType.trim() || "graphic") : graphicType.toLowerCase()
-  const parts = [
-    `${(style || "").toLowerCase()} ${graphic} graphic`,
-    "high contrast",
-    "streetwear style",
-    "suitable for screen print",
-  ]
-  if (text.trim()) parts.push(text.trim())
-  return parts.join(", ")
-}
-
 export default function DesignStudio() {
-  const [activeGarment, setActiveGarment] = useState("star-shorts")
+  const [activeGarment, setActiveGarment] = useState("shorts")
   const [activeView, setActiveView]       = useState("front")
   const [activeColor, setActiveColor]     = useState("black")
   const [selectedSize, setSelectedSize]   = useState(null)
   const [thumbnails, setThumbnails]       = useState([])
   const [activeThumbIdx, setActiveThumbIdx] = useState(null)
-  const [overlayBounds, setOverlayBounds] = useState(initBounds(GARMENTS["star-shorts"].overlayZone))
+  const [overlayBounds, setOverlayBounds] = useState(initBounds(GARMENTS["shorts"].overlayZone.front))
   const [tilt, setTilt]                   = useState({ x: 0, y: 0 })
   const [submitting, setSubmitting]       = useState(false)
   const [submitError, setSubmitError]     = useState(null)
@@ -103,16 +106,17 @@ export default function DesignStudio() {
   const [view360Error, setView360Error]   = useState(null)
   const [view360Playing, setView360Playing] = useState(false)
   const [view360FrameIdx, setView360FrameIdx] = useState(0)
+  const [showHomeBtn, setShowHomeBtn]     = useState(false)
 
   // AI modal state
   const [aiModalOpen, setAiModalOpen]           = useState(false)
-  const [aiStep, setAiStep]                     = useState(1)
-  const [aiGraphicType, setAiGraphicType]       = useState(null)
-  const [aiCustomType, setAiCustomType]         = useState("")
-  const [aiStyle, setAiStyle]                   = useState(null)
-  const [aiText, setAiText]                     = useState("")
-  const [aiAssembledPrompt, setAiAssembledPrompt] = useState("")
+  const [aiStep, setAiStep]                     = useState("stylist") // "stylist" | "builder" | "generating"
+  const [aiCustomInput, setAiCustomInput]       = useState("")
+  const [aiShowCustom, setAiShowCustom]         = useState(false)
   const [aiStylistLoading, setAiStylistLoading] = useState(false)
+  const [aiStylistResponse, setAiStylistResponse] = useState(null)
+  const [aiFollowUpInput, setAiFollowUpInput]   = useState("")
+  const [aiPrompt, setAiPrompt]                 = useState("")
   const [aiStylistTip, setAiStylistTip]         = useState(null)
   const [aiLoading, setAiLoading]               = useState(false)
   const [aiError, setAiError]                   = useState(null)
@@ -123,28 +127,24 @@ export default function DesignStudio() {
   // Onboarding tour
   const [tourStep, setTourStep] = useState(null)
 
-  const fileInputRef   = useRef(null)
-  const viewerRef      = useRef(null)
-  const cardRef        = useRef(null)
-  const garmentImgRef  = useRef(null)
-  const resizingRef    = useRef(null)
-  const drag360Ref     = useRef(null)
+  const fileInputRef     = useRef(null)
+  const viewerRef        = useRef(null)
+  const cardRef          = useRef(null)
+  const garmentImgRef    = useRef(null)
+  const resizingRef      = useRef(null)
+  const drag360Ref       = useRef(null)
   const progressTimerRef = useRef(null)
   const tipTimerRef      = useRef(null)
   const retryTimerRef    = useRef(null)
+  const homeBtnTimerRef  = useRef(null)
 
-  const GARMENT_360_KEY = { "star-shorts": "shorts", "five-hoodie": "hoodie" }
-
-  const garment      = GARMENTS[activeGarment]
-  const overlayZone  = garment.overlayZone
-  const showOverlay  = activeView === overlayZone.view
+  const garment     = GARMENTS[activeGarment]
+  const overlayZone = garment.overlayZone[activeView]
+  const showOverlay = !!overlayZone
   const activeOverlay = activeThumbIdx !== null ? thumbnails[activeThumbIdx] : null
-  const imgKey       = `${activeGarment}-${activeView}-${activeColor}`
-  const imgSrc       = garment.views[activeView][activeColor]
-
-  if (activeGarment === "star-shorts" && activeView === "front" && activeColor === "black") {
-    console.log("[DesignStudio] shorts/front/black resolved src:", imgSrc)
-  }
+  const imgKey      = `${activeGarment}-${activeView}-${activeColor}`
+  const imgSrc      = garment.colors[activeColor]?.[activeView]
+  const colorKeys   = Object.keys(garment.colors)
 
   useEffect(() => { track("page_view", { page: "studio" }) }, [])
 
@@ -168,13 +168,20 @@ export default function DesignStudio() {
     })
   }, [dismissTour])
 
-  // Reset state when garment changes
+  // Reset when garment changes
   useEffect(() => {
+    const g = GARMENTS[activeGarment]
     setActiveView("front")
-    setActiveColor(GARMENTS[activeGarment].colors[0])
-    setOverlayBounds(initBounds(GARMENTS[activeGarment].overlayZone))
+    setActiveColor(Object.keys(g.colors)[0])
+    setOverlayBounds(initBounds(g.overlayZone.front))
     setActiveThumbIdx(null)
   }, [activeGarment])
+
+  // Update overlay bounds when view changes
+  useEffect(() => {
+    const zone = garment.overlayZone[activeView]
+    if (zone) setOverlayBounds(initBounds(zone))
+  }, [activeView, activeGarment]) // eslint-disable-line
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -190,7 +197,7 @@ export default function DesignStudio() {
     return () => clearInterval(t)
   }, [view360Playing, view360Frames.length])
 
-  // AI progress bar & rotating tips during generation
+  // AI progress bar & rotating tips
   useEffect(() => {
     if (!aiLoading) {
       clearInterval(progressTimerRef.current)
@@ -213,13 +220,10 @@ export default function DesignStudio() {
     }
   }, [aiLoading])
 
-  // Retry countdown timer
+  // Retry countdown
   useEffect(() => {
     if (aiRetryCountdown === null) return
-    if (aiRetryCountdown === 0) {
-      handleAiGenerate()
-      return
-    }
+    if (aiRetryCountdown === 0) { handleAiGenerate(); return }
     retryTimerRef.current = setTimeout(() => setAiRetryCountdown(c => c - 1), 1000)
     return () => clearTimeout(retryTimerRef.current)
   }, [aiRetryCountdown]) // eslint-disable-line
@@ -233,25 +237,23 @@ export default function DesignStudio() {
       const dx = (e.clientX - startX) / rect.width  * 100
       const dy = (e.clientY - startY) / rect.height * 100
 
-      const zone = GARMENTS[activeGarment].overlayZone
-      const zTop   = parsePct(zone.top),  zLeft  = parsePct(zone.left)
+      const zone = GARMENTS[activeGarment].overlayZone[activeView]
+      if (!zone) return
+      const zTop    = parsePct(zone.top),  zLeft  = parsePct(zone.left)
       const zRight  = zLeft + parsePct(zone.width)
       const zBottom = zTop  + parsePct(zone.height)
       const MIN = 10
-
       let { top, left, width, height } = startBounds
 
       if (dir.includes("e")) width  = Math.max(MIN, Math.min(startBounds.width + dx, zRight - left))
       if (dir.includes("w")) {
         const nl = Math.max(zLeft, Math.min(startBounds.left + dx, startBounds.left + startBounds.width - MIN))
-        width = startBounds.left + startBounds.width - nl
-        left  = nl
+        width = startBounds.left + startBounds.width - nl; left = nl
       }
       if (dir.includes("s")) height = Math.max(MIN, Math.min(startBounds.height + dy, zBottom - top))
       if (dir.includes("n")) {
         const nt = Math.max(zTop, Math.min(startBounds.top + dy, startBounds.top + startBounds.height - MIN))
-        height = startBounds.top + startBounds.height - nt
-        top    = nt
+        height = startBounds.top + startBounds.height - nt; top = nt
       }
       setOverlayBounds({ top, left, width, height })
     }
@@ -262,7 +264,7 @@ export default function DesignStudio() {
       document.removeEventListener("mousemove", onMove)
       document.removeEventListener("mouseup", onUp)
     }
-  }, [activeGarment])
+  }, [activeGarment, activeView])
 
   // 3D tilt — mouse
   const handleViewerMouseMove = (e) => {
@@ -277,7 +279,6 @@ export default function DesignStudio() {
   }
   const handleViewerMouseLeave = () => setTilt({ x: 0, y: 0 })
 
-  // 3D tilt — touch
   const handleTouchMove = (e) => {
     if (!viewerRef.current) return
     const rect = viewerRef.current.getBoundingClientRect()
@@ -302,7 +303,7 @@ export default function DesignStudio() {
       const res = await fetch(`${API_BASE}/studio/360`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({ garment: GARMENT_360_KEY[activeGarment], color: activeColor }),
+        body: JSON.stringify({ garment: activeGarment, color: activeColor }),
       })
       if (!res.ok) throw new Error("generation failed")
       const data = await res.json()
@@ -387,10 +388,8 @@ export default function DesignStudio() {
     const canvas = document.createElement("canvas")
     canvas.width = W; canvas.height = H
     const ctx = canvas.getContext("2d")
-
     ctx.fillStyle = "#0d0d0d"
     ctx.fillRect(0, 0, W, H)
-
     const img = garmentImgRef.current
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, 0, 0, W, H)
@@ -400,7 +399,6 @@ export default function DesignStudio() {
       ctx.fillRect(0, 0, W, H)
       ctx.globalAlpha = 1
     }
-
     if (activeOverlay && showOverlay) {
       const ob = overlayBounds
       try {
@@ -412,7 +410,6 @@ export default function DesignStudio() {
         ctx.globalCompositeOperation = "source-over"
       } catch {}
     }
-
     return canvas.toDataURL("image/png")
   }
 
@@ -429,12 +426,12 @@ export default function DesignStudio() {
   const handleOpenAiModal = async () => {
     const token = await getIdToken()
     if (!token) { window.location.href = "/join"; return }
-    setAiStep(1)
-    setAiGraphicType(null)
-    setAiCustomType("")
-    setAiStyle(null)
-    setAiText("")
-    setAiAssembledPrompt("")
+    setAiStep("stylist")
+    setAiCustomInput("")
+    setAiShowCustom(false)
+    setAiStylistResponse(null)
+    setAiFollowUpInput("")
+    setAiPrompt("")
     setAiStylistTip(null)
     setAiStylistLoading(false)
     setAiError(null)
@@ -442,38 +439,35 @@ export default function DesignStudio() {
     setAiModalOpen(true)
   }
 
-  // Move to preview step — assemble prompt + call stylist
-  const handleGoToPreview = async () => {
-    const assembled = buildPrompt(aiGraphicType, aiCustomType, aiStyle, aiText)
-    setAiAssembledPrompt(assembled)
-    setAiStylistTip(null)
-    setAiStep("preview")
-    // Fire stylist in background
-    callStylist(assembled)
-  }
-
-  // Stylist call
-  const callStylist = async (prompt) => {
+  // Call the AI stylist
+  const callStylist = async (message) => {
     setAiStylistLoading(true)
-    setAiStylistTip(null)
+    setAiStylistResponse(null)
+    setAiError(null)
     try {
       const token = await getIdToken()
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({ feature: "review_prompt", prompt, garment: activeGarment, color: activeColor }),
+        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor }),
       })
       if (res.ok) {
         const data = await res.json()
-        if (data.tip && data.improved_prompt) setAiStylistTip(data)
+        setAiStylistResponse(data)
+        if (data.tip) setAiStylistTip(data.tip)
+      } else {
+        setAiError("Stylist unavailable — try again")
       }
-    } catch { /* fail silently */ }
-    finally { setAiStylistLoading(false) }
+    } catch {
+      setAiError("Network error — try again")
+    } finally {
+      setAiStylistLoading(false)
+    }
   }
 
   // AI generate
   const handleAiGenerate = async () => {
-    const prompt = aiAssembledPrompt.trim()
+    const prompt = aiPrompt.trim()
     if (!prompt || aiLoading) return
     track("studio_ai_generate", { garment: activeGarment })
     setAiLoading(true)
@@ -485,12 +479,7 @@ export default function DesignStudio() {
       const res = await fetch(`${API_BASE}/ai/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({
-          prompt,
-          garment: activeGarment,
-          color: activeColor,
-          styleContext: STYLE_CONTEXT,
-        }),
+        body: JSON.stringify({ prompt, garment: activeGarment, color: activeColor, styleContext: STYLE_CONTEXT }),
       })
       const data = await res.json()
 
@@ -501,8 +490,6 @@ export default function DesignStudio() {
           setAiRetryCountdown(5)
         } else if (errType === "bedrock_auth") {
           setAiError("AI generation is temporarily unavailable")
-        } else if (errType === "s3_error") {
-          setAiError("Something went wrong. Your prompt has been saved — try again")
         } else {
           setAiError("Something went wrong. Your prompt has been saved — try again")
         }
@@ -579,6 +566,9 @@ export default function DesignStudio() {
       }
 
       setToast("Your design is in the Arena! Get 50 pre-orders to make it real.")
+      setShowHomeBtn(true)
+      clearTimeout(homeBtnTimerRef.current)
+      homeBtnTimerRef.current = setTimeout(() => setShowHomeBtn(false), 10000)
       setTimeout(() => { window.location.href = "/" }, 2500)
     } catch (err) {
       setSubmitError(err.message || "Something went wrong. Please try again.")
@@ -597,8 +587,12 @@ export default function DesignStudio() {
 
   return (
     <div className="app ds-page">
-      <main className="ds-main">
+      {/* ── BACK BUTTON ── */}
+      <div className="ds-back-bar">
+        <a href="/" className="ds-back-btn">← Back to Arena</a>
+      </div>
 
+      <main className="ds-main">
         <div className="ds-layout">
           {/* ── VIEWER ── */}
           <div className="ds-viewer-col">
@@ -716,22 +710,25 @@ export default function DesignStudio() {
             <div className="ds-section">
               <span className="ds-section-label">VIEW</span>
               <div className="ds-pill-group">
-                {["front", "back"].map((v) => (
-                  <button
-                    key={v}
-                    className={`ds-pill${activeView === v ? " active" : ""}`}
-                    onClick={() => setActiveView(v)}
-                  >
-                    {v.toUpperCase()}
-                  </button>
-                ))}
+                {garment.views.map((v) => {
+                  if (v === "side" && !garment.colors[activeColor]?.[v]) return null
+                  return (
+                    <button
+                      key={v}
+                      className={`ds-pill${activeView === v ? " active" : ""}`}
+                      onClick={() => setActiveView(v)}
+                    >
+                      {v.toUpperCase()}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
             <div className={`ds-section${tourStep === 2 ? " ds-tour-highlight" : ""}`} data-tour="color">
               <span className="ds-section-label">COLOR</span>
               <div className="ds-swatches">
-                {garment.colors.map((c) => (
+                {colorKeys.map((c) => (
                   <button
                     key={c}
                     className={`ds-swatch${activeColor === c ? " selected" : ""}`}
@@ -837,205 +834,224 @@ export default function DesignStudio() {
       {aiModalOpen && (
         <div
           className="ds-modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) { setAiModalOpen(false) } }}
+          onClick={(e) => { if (e.target === e.currentTarget && !aiLoading) setAiModalOpen(false) }}
         >
-          <div className="ds-modal-box">
+          <div className="ds-modal-box ds-modal-mobile-full">
             <button
               className="ds-modal-close"
               onClick={() => { if (!aiLoading) setAiModalOpen(false) }}
               disabled={aiLoading}
             >✕</button>
 
-            <span className="ds-section-label">AI DESIGN GENERATOR</span>
-            <h3 className="ds-modal-title">Build Your Design</h3>
-
-            {/* Step indicators */}
-            <div className="ds-step-indicators">
-              {[1, 2, 3].map(n => (
-                <div
-                  key={n}
-                  className={`ds-step-dot${aiStep === n || (aiStep === "preview" && n === 3) ? " active" : ""} ${
-                    (aiStep > n || aiStep === "preview") ? "done" : ""
-                  }`}
-                >
-                  {n}
-                </div>
-              ))}
-            </div>
-
-            {/* ── STEP 1: Graphic Type ── */}
-            {aiStep === 1 && (
+            {/* ── STEP 1: STYLIST CONVERSATION ── */}
+            {aiStep === "stylist" && (
               <div className="ds-modal-step">
-                <span className="ds-step-label">GRAPHIC TYPE</span>
-                <div className="ds-option-grid">
-                  {GRAPHIC_TYPES.map(t => (
-                    <button
-                      key={t}
-                      className={`ds-option-btn${aiGraphicType === t ? " selected" : ""}`}
-                      onClick={() => setAiGraphicType(t)}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                {aiGraphicType === "CUSTOM" && (
-                  <input
-                    className="ds-modal-input"
-                    type="text"
-                    placeholder="Describe your graphic..."
-                    value={aiCustomType}
-                    onChange={e => setAiCustomType(e.target.value)}
-                    autoFocus
-                  />
+                <span className="ds-section-label">✦ AI STYLIST</span>
+                <h3 className="ds-modal-title">Tell me what you're going for and I'll help you design something fire.</h3>
+
+                {!aiStylistResponse && !aiStylistLoading && (
+                  <>
+                    <div className="ds-quickstart-group">
+                      {QUICK_STARTS.map((q) => (
+                        <button
+                          key={q.label}
+                          className={`ds-quickstart-btn${aiShowCustom && q.message === null ? " selected" : ""}`}
+                          onClick={() => {
+                            if (q.message === null) {
+                              setAiShowCustom(true)
+                            } else {
+                              setAiShowCustom(false)
+                              callStylist(q.message)
+                            }
+                          }}
+                        >
+                          {q.label}
+                        </button>
+                      ))}
+                    </div>
+                    {aiShowCustom && (
+                      <div className="ds-custom-input-row">
+                        <textarea
+                          className="ds-modal-input ds-modal-textarea"
+                          placeholder="Describe your idea..."
+                          value={aiCustomInput}
+                          onChange={e => setAiCustomInput(e.target.value)}
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="ds-modal-nav">
+                          <button
+                            className="ds-modal-gen-btn"
+                            onClick={() => callStylist(aiCustomInput)}
+                            disabled={!aiCustomInput.trim()}
+                          >
+                            GET ADVICE →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {aiError && <p className="ds-modal-error">{aiError}</p>}
+                  </>
                 )}
-                <div className="ds-modal-nav">
-                  <button
-                    className="ds-modal-gen-btn"
-                    onClick={() => setAiStep(2)}
-                    disabled={!aiGraphicType || (aiGraphicType === "CUSTOM" && !aiCustomType.trim())}
-                  >
-                    NEXT →
-                  </button>
-                </div>
-              </div>
-            )}
 
-            {/* ── STEP 2: Style ── */}
-            {aiStep === 2 && (
-              <div className="ds-modal-step">
-                <span className="ds-step-label">STYLE</span>
-                <div className="ds-option-grid">
-                  {STYLE_OPTIONS.map(s => (
-                    <button
-                      key={s}
-                      className={`ds-option-btn${aiStyle === s ? " selected" : ""}`}
-                      onClick={() => setAiStyle(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-                <div className="ds-modal-nav">
-                  <button className="ds-modal-cancel-btn" onClick={() => setAiStep(1)}>← BACK</button>
-                  <button
-                    className="ds-modal-gen-btn"
-                    onClick={() => setAiStep(3)}
-                    disabled={!aiStyle}
-                  >
-                    NEXT →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: Optional Text ── */}
-            {aiStep === 3 && (
-              <div className="ds-modal-step">
-                <span className="ds-step-label">ADD TEXT? <span className="ds-step-optional">(optional)</span></span>
-                <input
-                  className="ds-modal-input"
-                  type="text"
-                  placeholder="Any words or phrases?"
-                  value={aiText}
-                  onChange={e => setAiText(e.target.value)}
-                  autoFocus
-                />
-                <div className="ds-modal-nav">
-                  <button className="ds-modal-cancel-btn" onClick={() => setAiStep(2)}>← BACK</button>
-                  <button className="ds-modal-gen-btn" onClick={handleGoToPreview}>
-                    PREVIEW →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── PREVIEW ── */}
-            {aiStep === "preview" && (
-              <div className="ds-modal-step">
-                <span className="ds-step-label">YOUR PROMPT</span>
-                <textarea
-                  className="ds-assembled-prompt"
-                  value={aiAssembledPrompt}
-                  onChange={e => setAiAssembledPrompt(e.target.value)}
-                  disabled={aiLoading}
-                  rows={3}
-                />
-
-                {/* Stylist tip */}
                 {aiStylistLoading && (
                   <div className="ds-stylist-loading">
                     <span className="ds-spinner ds-spinner-yellow" />
-                    <span>Getting style tip...</span>
-                  </div>
-                )}
-                {!aiStylistLoading && aiStylistTip && (
-                  <div className="ds-stylist-card">
-                    <span className="ds-stylist-icon">✦</span>
-                    <p className="ds-stylist-tip">{aiStylistTip.tip}</p>
-                    <div className="ds-stylist-actions">
-                      <button
-                        className="ds-stylist-use-btn"
-                        onClick={() => {
-                          setAiAssembledPrompt(aiStylistTip.improved_prompt)
-                          setAiStylistTip(null)
-                        }}
-                        disabled={aiLoading}
-                      >
-                        USE SUGGESTED PROMPT
-                      </button>
-                      <button
-                        className="ds-stylist-keep-btn"
-                        onClick={() => setAiStylistTip(null)}
-                        disabled={aiLoading}
-                      >
-                        KEEP MINE
-                      </button>
-                    </div>
+                    <span>Thinking about your design...</span>
                   </div>
                 )}
 
-                {/* Error state */}
+                {aiStylistResponse && !aiStylistLoading && (
+                  <div className="ds-chat-response">
+                    <div className="ds-chat-bubble">
+                      <p className="ds-chat-message">{aiStylistResponse.message}</p>
+                      {aiStylistResponse.tip && (
+                        <p className="ds-chat-tip">✦ TIP: {aiStylistResponse.tip}</p>
+                      )}
+                    </div>
+
+                    {aiStylistResponse.needs_more_info ? (
+                      <>
+                        {aiStylistResponse.follow_up_question && (
+                          <p className="ds-follow-up-label">{aiStylistResponse.follow_up_question}</p>
+                        )}
+                        <textarea
+                          className="ds-modal-input ds-modal-textarea"
+                          placeholder="Your answer..."
+                          value={aiFollowUpInput}
+                          onChange={e => setAiFollowUpInput(e.target.value)}
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="ds-modal-nav">
+                          <button
+                            className="ds-modal-cancel-btn"
+                            onClick={() => { setAiStylistResponse(null); setAiShowCustom(false) }}
+                          >
+                            ← START OVER
+                          </button>
+                          <button
+                            className="ds-modal-gen-btn"
+                            onClick={() => callStylist(aiFollowUpInput)}
+                            disabled={!aiFollowUpInput.trim()}
+                          >
+                            SEND →
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="ds-modal-nav">
+                        <button
+                          className="ds-modal-cancel-btn"
+                          onClick={() => { setAiStylistResponse(null); setAiShowCustom(false) }}
+                        >
+                          REFINE IT
+                        </button>
+                        <button
+                          className="ds-modal-gen-btn"
+                          onClick={() => {
+                            setAiPrompt(aiStylistResponse.improved_prompt || "")
+                            setAiStylistTip(aiStylistResponse.tip || null)
+                            setAiStep("builder")
+                          }}
+                        >
+                          USE THIS PROMPT →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── STEP 2: PROMPT BUILDER ── */}
+            {aiStep === "builder" && (
+              <div className="ds-modal-step">
+                <span className="ds-section-label">✦ AI DESIGN GENERATOR</span>
+                <h3 className="ds-modal-title">Your Prompt</h3>
+
+                {aiStylistTip && (
+                  <div className="ds-builder-tip">✦ {aiStylistTip}</div>
+                )}
+
+                <textarea
+                  className="ds-assembled-prompt"
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  rows={4}
+                />
+
                 {aiError && (
                   <div className="ds-modal-error-box">
                     <p className="ds-modal-error">{aiError}</p>
                     {aiRetryCountdown !== null && (
                       <p className="ds-retry-countdown">
-                        {aiRetryCountdown > 0
-                          ? `Auto-retry in ${aiRetryCountdown}s...`
-                          : "Retrying..."}
+                        {aiRetryCountdown > 0 ? `Auto-retry in ${aiRetryCountdown}s...` : "Retrying..."}
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* Progress bar */}
+                <div className="ds-modal-nav">
+                  <button className="ds-modal-cancel-btn" onClick={() => setAiStep("stylist")}>
+                    ← Back to Stylist
+                  </button>
+                  <button
+                    className="ds-modal-gen-btn"
+                    onClick={() => { setAiStep("generating"); handleAiGenerate() }}
+                    disabled={!aiPrompt.trim() || aiRetryCountdown !== null}
+                  >
+                    GENERATE →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 3: GENERATING ── */}
+            {aiStep === "generating" && (
+              <div className="ds-modal-step">
+                <span className="ds-section-label">✦ AI DESIGN GENERATOR</span>
+                <h3 className="ds-modal-title">
+                  {aiLoading ? "Generating Your Design" : aiError ? "Generation Failed" : "Done"}
+                </h3>
+
                 {aiLoading && (
                   <div className="ds-progress-wrap">
                     <div className="ds-progress-bar-track">
-                      <div
-                        className="ds-progress-bar-fill"
-                        style={{ width: `${aiProgressPct}%` }}
-                      />
+                      <div className="ds-progress-bar-fill" style={{ width: `${aiProgressPct}%` }} />
                     </div>
                     <p className="ds-modal-loading-tip">{LOADING_TIPS[aiTipIdx]}</p>
+                  </div>
+                )}
+
+                {aiError && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">{aiError}</p>
+                    {aiRetryCountdown !== null && (
+                      <p className="ds-retry-countdown">
+                        {aiRetryCountdown > 0 ? `Auto-retry in ${aiRetryCountdown}s...` : "Retrying..."}
+                      </p>
+                    )}
                   </div>
                 )}
 
                 <div className="ds-modal-nav">
                   <button
                     className="ds-modal-cancel-btn"
-                    onClick={() => setAiStep(3)}
+                    onClick={() => setAiStep("builder")}
                     disabled={aiLoading}
                   >
-                    ← BACK
+                    ← Edit Prompt
                   </button>
-                  <button
-                    className="ds-modal-gen-btn"
-                    onClick={handleAiGenerate}
-                    disabled={aiLoading || !aiAssembledPrompt.trim() || aiRetryCountdown !== null}
-                  >
-                    {aiLoading ? <><span className="ds-spinner" /> GENERATING...</> : "GENERATE"}
-                  </button>
+                  {aiError && !aiLoading && (
+                    <button
+                      className="ds-modal-gen-btn"
+                      onClick={handleAiGenerate}
+                      disabled={aiRetryCountdown !== null}
+                    >
+                      TRY AGAIN
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1060,6 +1076,11 @@ export default function DesignStudio() {
 
       {/* ── TOAST ── */}
       {toast && <div className="ds-toast">{toast}</div>}
+
+      {/* ── FLOATING HOME BUTTON ── */}
+      {showHomeBtn && (
+        <a href="/" className="ds-home-float">⌂ HOME</a>
+      )}
     </div>
   )
 }

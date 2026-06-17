@@ -1057,6 +1057,82 @@ function SupportSection({ apiBase, adminKey }) {
   )
 }
 
+// ── PHOTOS SECTION ────────────────────────────────────────────────
+
+const EXPECTED_PHOTOS = [
+  { path: "/garments/shorts-front-black.jpg",  label: "Star Shorts — Black — Front"  },
+  { path: "/garments/shorts-back-black.jpg",   label: "Star Shorts — Black — Back"   },
+  { path: "/garments/shorts-side-black.jpg",   label: "Star Shorts — Black — Side"   },
+  { path: "/garments/shorts-front-pink.jpg",   label: "Star Shorts — Pink — Front"   },
+  { path: "/garments/shorts-back-pink.jpg",    label: "Star Shorts — Pink — Back"    },
+  { path: "/garments/shorts-side-pink.jpg",    label: "Star Shorts — Pink — Side"    },
+  { path: "/garments/hoodie-front-black.png",  label: "Five Hoodie — Black — Front"  },
+  { path: "/garments/hoodie-back-black.png",   label: "Five Hoodie — Black — Back"   },
+]
+
+function PhotosSection() {
+  const [statuses, setStatuses] = useState({})
+
+  useEffect(() => {
+    EXPECTED_PHOTOS.forEach(({ path }) => {
+      fetch(path, { method: "HEAD" })
+        .then(r => setStatuses(s => ({ ...s, [path]: r.ok ? "ok" : "missing" })))
+        .catch(() => setStatuses(s => ({ ...s, [path]: "missing" })))
+    })
+  }, [])
+
+  const ok      = EXPECTED_PHOTOS.filter(p => statuses[p.path] === "ok").length
+  const missing = EXPECTED_PHOTOS.filter(p => statuses[p.path] === "missing").length
+  const pending = EXPECTED_PHOTOS.filter(p => !statuses[p.path]).length
+
+  return (
+    <main style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <span style={S.sectionLabel}>GARMENT PHOTOS</span>
+        <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+          {[
+            { label: "Present",  val: ok,      color: "#00ff88" },
+            { label: "Missing",  val: missing, color: "#ff4444" },
+            { label: "Checking", val: pending, color: "#555"    },
+          ].map(c => (
+            <div key={c.label} style={{ background: "#0d0d0d", border: "1px solid #1a1a1a", padding: "1rem 1.5rem" }}>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2rem", color: c.color, letterSpacing: "0.05em" }}>{c.val}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.2em", color: "#555", textTransform: "uppercase" }}>{c.label}</div>
+            </div>
+          ))}
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={S.th}>File</th>
+              <th style={S.th}>Status</th>
+              <th style={S.th}>Preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EXPECTED_PHOTOS.map(({ path, label }) => {
+              const status = statuses[path]
+              const color  = status === "ok" ? "#00ff88" : status === "missing" ? "#ff4444" : "#555"
+              const icon   = status === "ok" ? "✅" : status === "missing" ? "⚠️" : "..."
+              return (
+                <tr key={path}>
+                  <td style={S.td}>{label}<br /><span style={{ color: "#444", fontSize: "0.55rem" }}>{path}</span></td>
+                  <td style={{ ...S.td, color }}>{icon} {status || "checking"}</td>
+                  <td style={S.td}>
+                    {status === "ok" && (
+                      <img src={path} alt={label} style={{ height: 48, width: "auto", objectFit: "contain", background: "#111" }} />
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  )
+}
+
 // ── REPUTATION SECTION ────────────────────────────────────────────
 
 function ReputationSection({ apiBase, adminKey }) {
@@ -1487,6 +1563,7 @@ export default function AdminPanel() {
     { id: "reputation", label: "REPUTATION"    },
     { id: "suppliers",  label: "SUPPLIERS"     },
     { id: "sms",        label: "SMS"           },
+    { id: "photos",     label: "PHOTOS"        },
     { id: "tools",      label: "TOOLS"         },
   ]
 
@@ -1607,6 +1684,11 @@ export default function AdminPanel() {
       {/* SMS tab */}
       {activeTab === "sms" && (
         <SmsAdminSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* Photos tab */}
+      {activeTab === "photos" && (
+        <PhotosSection />
       )}
 
       {/* Tools tab (existing functionality) */}

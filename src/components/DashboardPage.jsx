@@ -407,6 +407,7 @@ export default function DashboardPage() {
       <header style={S.header}>
         <a href="/" style={S.logo}>PR5JECT</a>
         <nav style={S.nav}>
+          <a href="/" style={{ ...S.navBtn, color: "#555", textDecoration: "none", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>← Back to Arena</a>
           <a href="/profile" style={{ ...S.navBtn, color: "#e8ff00", textDecoration: "none", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>Profile</a>
           <button style={S.navBtn} onClick={() => { signOut(); window.location.href = "/" }}>Sign Out</button>
         </nav>

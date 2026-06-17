@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { track } from "../utils/track"
 
 const API = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
@@ -19,6 +19,8 @@ export default function DmcaPage() {
   const [done, setDone] = useState(false)
   const [reportId, setReportId] = useState("")
   const [error, setError] = useState("")
+  const [showHomeBtn, setShowHomeBtn] = useState(false)
+  const homeBtnTimer = useRef(null)
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -40,6 +42,9 @@ export default function DmcaPage() {
       if (r.ok) {
         setReportId(data.reportId)
         setDone(true)
+        setShowHomeBtn(true)
+        clearTimeout(homeBtnTimer.current)
+        homeBtnTimer.current = setTimeout(() => setShowHomeBtn(false), 10000)
       } else {
         setError(data.error || "Submission failed. Please try again.")
       }
@@ -61,6 +66,14 @@ export default function DmcaPage() {
         <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Report ID: <span style={{ color: "#e8ff00" }}>{reportId?.slice(0, 8).toUpperCase()}</span></p>
         <p style={{ color: "#555", fontSize: "0.78rem" }}>We will respond within 10 business days.</p>
       </div>
+      {showHomeBtn && (
+        <a href="/" style={{
+          position: "fixed", bottom: "1.5rem", left: "1.5rem", zIndex: 200,
+          fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", letterSpacing: "0.2em",
+          textTransform: "uppercase", background: "#e8ff00", color: "#000",
+          padding: "0.6rem 1.2rem", textDecoration: "none",
+        }}>⌂ HOME</a>
+      )}
     </div>
   )
 
