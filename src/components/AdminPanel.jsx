@@ -507,6 +507,79 @@ function CreatorsSection({ creators }) {
   )
 }
 
+// ── HARDWARE IDEAS SECTION ────────────────────────────────────
+
+function HardwareIdeasSection({ apiBase, adminKey }) {
+  const [items, setItems]     = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = () => {
+    setLoading(true)
+    fetch(`${apiBase}/admin/hardware-suggestions?adminKey=${adminKey}`)
+      .then(r => r.ok ? r.json() : { suggestions: [] })
+      .then(d => setItems(d.suggestions || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  return (
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 2rem 4rem" }}>
+      <div style={S.section}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div>
+            <span style={S.sectionLabel}>COMMUNITY INPUT</span>
+            <p style={{ ...S.sectionTitle, margin: 0 }}>Hardware Ideas</p>
+          </div>
+          <button onClick={load} style={{ background: "none", border: "1px solid #333", color: "#555", fontFamily: "'DM Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.15em", padding: "0.3rem 0.75rem", cursor: "pointer" }}>
+            REFRESH
+          </button>
+        </div>
+        {loading && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#444" }}>Loading...</div>}
+        {!loading && items.length === 0 && (
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#555", padding: "1rem 0" }}>No hardware ideas yet.</div>
+        )}
+        {!loading && items.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Date", "User", "Garment", "Color", "Idea", "Preview"].map(h => (
+                    <th key={h} style={S.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.suggestionId}
+                    onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    style={{ transition: "background 0.1s", verticalAlign: "top" }}
+                  >
+                    <td style={{ ...S.td, color: "#555", whiteSpace: "nowrap" }}>{item.createdAt?.slice(0, 10)}</td>
+                    <td style={{ ...S.td, color: "#e8ff00" }}>{(item.userId || "").slice(0, 8)}</td>
+                    <td style={S.td}>{item.garment}</td>
+                    <td style={S.td}>{item.color}</td>
+                    <td style={{ ...S.td, maxWidth: 320, whiteSpace: "normal", lineHeight: 1.5 }}>{item.suggestion}</td>
+                    <td style={S.td}>
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt="design" style={{ height: 48, width: "auto", objectFit: "contain", background: "#111" }} />
+                      ) : (
+                        <span style={{ color: "#333" }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
+
 // ── MAIN ADMIN PANEL ───────────────────────────────────────────────
 
 // ── FUNNEL SECTION ────────────────────────────────────────────────
@@ -1555,16 +1628,17 @@ export default function AdminPanel() {
   }
 
   const TABS = [
-    { id: "dashboard",  label: "OPS DASHBOARD" },
-    { id: "funnel",     label: "FUNNEL"        },
-    { id: "fraud",      label: "FRAUD"         },
-    { id: "dmca",       label: "DMCA"          },
-    { id: "support",    label: "SUPPORT"       },
-    { id: "reputation", label: "REPUTATION"    },
-    { id: "suppliers",  label: "SUPPLIERS"     },
-    { id: "sms",        label: "SMS"           },
-    { id: "photos",     label: "PHOTOS"        },
-    { id: "tools",      label: "TOOLS"         },
+    { id: "dashboard",      label: "OPS DASHBOARD"  },
+    { id: "funnel",         label: "FUNNEL"         },
+    { id: "fraud",          label: "FRAUD"          },
+    { id: "dmca",           label: "DMCA"           },
+    { id: "support",        label: "SUPPORT"        },
+    { id: "reputation",     label: "REPUTATION"     },
+    { id: "suppliers",      label: "SUPPLIERS"      },
+    { id: "sms",            label: "SMS"            },
+    { id: "hardware-ideas", label: "HARDWARE IDEAS" },
+    { id: "photos",         label: "PHOTOS"         },
+    { id: "tools",          label: "TOOLS"          },
   ]
 
   return (
@@ -1684,6 +1758,11 @@ export default function AdminPanel() {
       {/* SMS tab */}
       {activeTab === "sms" && (
         <SmsAdminSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
+      )}
+
+      {/* Hardware Ideas tab */}
+      {activeTab === "hardware-ideas" && (
+        <HardwareIdeasSection apiBase={API_BASE} adminKey={ADMIN_KEY} />
       )}
 
       {/* Photos tab */}

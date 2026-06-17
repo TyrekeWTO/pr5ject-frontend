@@ -124,6 +124,12 @@ export default function DesignStudio() {
   const [aiTipIdx, setAiTipIdx]                 = useState(0)
   const [aiRetryCountdown, setAiRetryCountdown] = useState(null)
 
+  // Hardware suggestion state
+  const [hwSuggestion, setHwSuggestion]   = useState("")
+  const [hwSubmitting, setHwSubmitting]   = useState(false)
+  const [hwSuccess, setHwSuccess]         = useState(false)
+  const [hwError, setHwError]             = useState(null)
+
   // Onboarding tour
   const [tourStep, setTourStep] = useState(null)
 
@@ -514,6 +520,36 @@ export default function DesignStudio() {
     }
   }
 
+  // Hardware suggestion submit
+  const handleHardwareSubmit = async () => {
+    const text = hwSuggestion.trim()
+    if (!text || hwSubmitting) return
+    setHwSubmitting(true)
+    setHwError(null)
+    try {
+      const token = await getIdToken()
+      if (!token) { window.location.href = "/join"; return }
+      const aiThumb = thumbnails.find(t => t.id.startsWith("ai-"))
+      const res = await fetch(`${API_BASE}/hardware-suggestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": token },
+        body: JSON.stringify({
+          suggestion: text,
+          garment:    activeGarment,
+          color:      activeColor,
+          imageUrl:   aiThumb?.url || "",
+        }),
+      })
+      if (!res.ok) throw new Error("Submit failed")
+      setHwSuccess(true)
+      setHwSuggestion("")
+    } catch {
+      setHwError("Couldn't submit — try again")
+    } finally {
+      setHwSubmitting(false)
+    }
+  }
+
   // Pre-order submit
   const handlePreorder = async () => {
     if (!selectedSize || submitting) return
@@ -804,6 +840,39 @@ export default function DesignStudio() {
 
             {view360Error && <div className="ds-error">{view360Error}</div>}
             {submitError && <div className="ds-error">{submitError}</div>}
+
+            {thumbnails.some(t => t.id.startsWith("ai-")) && (
+              <>
+                <p className="ds-hw-disclaimer">
+                  AI graphics apply to the fabric. Hardware customization (strings, zippers, buttons) is submitted separately below.
+                </p>
+                <div className="ds-section ds-hw-section">
+                  <span className="ds-section-label">CUSTOM HARDWARE</span>
+                  {hwSuccess ? (
+                    <p className="ds-hw-success">We got it — we'll make it happen 🔥</p>
+                  ) : (
+                    <>
+                      <p className="ds-hw-prompt">Want custom hardware? Describe your idea:</p>
+                      <textarea
+                        className="ds-hw-textarea"
+                        placeholder="e.g. Star-shaped zipper pull, chrome aglets, custom snap buttons..."
+                        value={hwSuggestion}
+                        onChange={e => setHwSuggestion(e.target.value)}
+                        rows={3}
+                      />
+                      {hwError && <p className="ds-error">{hwError}</p>}
+                      <button
+                        className="ds-hw-submit-btn"
+                        onClick={handleHardwareSubmit}
+                        disabled={!hwSuggestion.trim() || hwSubmitting}
+                      >
+                        {hwSubmitting ? "SUBMITTING..." : "SUBMIT IDEA"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </main>
