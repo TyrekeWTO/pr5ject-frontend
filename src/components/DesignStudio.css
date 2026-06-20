@@ -95,7 +95,7 @@
   width: 70%;
   height: 70%;
   object-fit: contain;
-  mix-blend-mode: multiply;
+  mix-blend-mode: normal;
   pointer-events: none;
 }
 
