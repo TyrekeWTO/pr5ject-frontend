@@ -161,20 +161,13 @@ export default function App() {
     }
   }
 
-  const handleSubmitOpen = async () => {
+  const handleSubmitOpen = () => {
     track("submit_open")
     if (!user) {
       setPendingAction(() => () => setShowSubmit(true))
       setShowAuth(true)
       return
     }
-
-    const missingDoc = await checkLegalGate()
-    if (missingDoc) {
-      window.location.assign(`/${missingDoc}?next=${encodeURIComponent(window.location.pathname)}`)
-      return
-    }
-
     setShowSubmit(true)
   }
 

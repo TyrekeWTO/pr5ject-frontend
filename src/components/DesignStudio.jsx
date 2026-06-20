@@ -660,6 +660,18 @@ export default function DesignStudio() {
             hasDesignImages: customThumbs.length > 0,
             draft: isDraft,
           },
+          ...(aiStylistResponse && {
+            aiDesignSpec: {
+              theme:               aiStylistResponse.theme,
+              frontDesign:         aiStylistResponse.frontDesign,
+              backDesign:          aiStylistResponse.backDesign,
+              materials:           aiStylistResponse.materials,
+              hardware:            aiStylistResponse.hardware,
+              manufacturingNotes:  aiStylistResponse.manufacturingNotes,
+              manufacturability:   aiStylistResponse.manufacturability,
+              estimatedCost:       aiStylistResponse.estimatedCost,
+            },
+          }),
         }),
       })
       if (!res.ok) throw new Error("Submission failed")
@@ -722,6 +734,18 @@ export default function DesignStudio() {
             size: selectedSize,
             hasCustomDesign: activeOverlay !== null,
           },
+          ...(aiStylistResponse && {
+            aiDesignSpec: {
+              theme:               aiStylistResponse.theme,
+              frontDesign:         aiStylistResponse.frontDesign,
+              backDesign:          aiStylistResponse.backDesign,
+              materials:           aiStylistResponse.materials,
+              hardware:            aiStylistResponse.hardware,
+              manufacturingNotes:  aiStylistResponse.manufacturingNotes,
+              manufacturability:   aiStylistResponse.manufacturability,
+              estimatedCost:       aiStylistResponse.estimatedCost,
+            },
+          }),
         }),
       })
       if (!designRes.ok) throw new Error("Design submission failed")

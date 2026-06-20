@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
 
@@ -37,6 +37,29 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
 
   const [feasibility, setFeasibility] = useState(null)
   const [feasibilityLoading, setFeasibilityLoading] = useState(false)
+
+  const [legalNotice, setLegalNotice] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getIdToken().then(async (token) => {
+      if (!token) return
+      try {
+        const res = await fetch(`${API_BASE}/legal/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled && !data.allRequired && data.missing?.length) {
+          const doc = data.missing[0]
+          setLegalNotice(doc)
+        }
+      } catch {
+        // non-blocking — form still usable if check fails
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const handleAiAssist = async () => {
     if (!aiPrompt.trim() || aiLoading) return
@@ -123,6 +146,8 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
     setLoading(true)
     try {
       const token = await getIdToken()
+      const claims = token ? JSON.parse(atob(token.split(".")[1])) : {}
+      const creatorId = claims.sub
 
       const configuration = {}
       if (color.trim()) configuration.color = color.trim()
@@ -135,7 +160,7 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ garmentType, configuration }),
+        body: JSON.stringify({ creatorId, garmentType, configuration }),
       })
 
       if (!res.ok) {
@@ -143,7 +168,8 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
         throw new Error(data.error || "Submission failed")
       }
 
-      const { designId } = await res.json()
+      const data = await res.json()
+      const designId = data.designId || data.design?.designId
       track("design_submitted", { garmentType })
 
       if (imageFile && designId) {
@@ -292,8 +318,18 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
           </div>
         )}
 
+        {legalNotice && (
+          <p className="auth-error" style={{ marginBottom: "0.5rem" }}>
+            You'll need to accept our{" "}
+            <a href={`/${legalNotice}?next=/`} style={{ color: "inherit", textDecoration: "underline" }}>
+              {legalNotice === "creator-agreement" ? "creator agreement" : legalNotice}
+            </a>{" "}
+            before submitting.
+          </p>
+        )}
+
         <div className="submit-actions">
-          <button className="auth-btn" onClick={handleSubmit} disabled={loading}>
+          <button className="auth-btn" onClick={handleSubmit} disabled={loading || !!legalNotice}>
             {btnLabel}
           </button>
           <button
