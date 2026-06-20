@@ -45,6 +45,8 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
     setAiReasoning(null)
     try {
       const token = await getIdToken()
+      console.log("[AI] token present:", !!token)
+      if (!token) throw new Error("Not logged in")
       const body = { feature: "assistant", prompt: aiPrompt.trim() }
       if (imageFile) {
         const imageBase64 = await fileToBase64(imageFile)
@@ -89,6 +91,8 @@ export default function SubmitScreen({ onSubmitted, onDismiss }) {
     setFeasibility(null)
     try {
       const token = await getIdToken()
+      console.log("[AI] token present:", !!token)
+      if (!token) throw new Error("Not logged in")
       const configuration = {}
       if (color.trim()) configuration.color = color.trim()
       if (material.trim()) configuration.material = material.trim()

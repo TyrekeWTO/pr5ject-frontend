@@ -20,6 +20,8 @@ export default function DesignGenerator() {
     setResult(null)
     try {
       const token = await getIdToken()
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
       const res = await fetch(AI_GENERATE_URL, {
         method: "POST",
         headers: {
@@ -27,7 +29,9 @@ export default function DesignGenerator() {
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ prompt: prompt.trim(), styleContext: "" }),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       if (!res.ok) throw new Error("AI request failed")
       const data = await res.json()
       setResult(data)
@@ -103,3 +107,4 @@ export default function DesignGenerator() {
     </div>
   )
 }
+

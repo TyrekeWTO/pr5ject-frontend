@@ -15,24 +15,17 @@ function getSessionId() {
 
 export function track(event, props = {}) {
   try {
-    const payload = JSON.stringify({
-      event,
-      ...props,
-      sessionId: getSessionId(),
-      ts: Date.now(),
-    })
-    // Use sendBeacon when available — doesn't block page unload
-    if (navigator.sendBeacon) {
-      const blob = new Blob([payload], { type: "application/json" })
-      navigator.sendBeacon(`${API_BASE}/track`, blob)
-    } else {
-      fetch(`${API_BASE}/track`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-        keepalive: true,
-      }).catch(() => {})
-    }
+    fetch(`${API_BASE}/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event,
+        ...props,
+        sessionId: getSessionId(),
+        ts: Date.now(),
+      }),
+      keepalive: true,
+    }).catch(() => {})
   } catch {
     // silently ignore — analytics must never break the UI
   }

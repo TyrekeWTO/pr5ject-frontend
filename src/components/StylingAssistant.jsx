@@ -20,6 +20,8 @@ export default function StylingAssistant() {
     setResult(null)
     try {
       const token = await getIdToken()
+      console.log("[AI] token present:", !!token)
+      if (!token) throw new Error("Not logged in")
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers: {
