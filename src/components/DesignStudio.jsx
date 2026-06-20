@@ -186,6 +186,7 @@ export default function DesignStudio() {
   const retryTimerRef    = useRef(null)
   const homeBtnTimerRef  = useRef(null)
 
+  const effectiveGarment = customMode ? customGarment : activeGarment
   const garment     = GARMENTS[activeGarment]
   const overlayZone = garment.overlayZone[activeView]
   const showOverlay = !!overlayZone
@@ -485,17 +486,17 @@ export default function DesignStudio() {
     setAiError(null)
     setAiRetryCountdown(null)
     setAiStylistHistory([])
-    setAiStylistHistoryGarment(activeGarment)
+    setAiStylistHistoryGarment(effectiveGarment)
     setAiModalOpen(true)
   }
 
   // Call the AI stylist
   const callStylist = async (message) => {
     // If the garment changed since the last stylist session, start fresh
-    const freshHistory = aiStylistHistoryGarment !== activeGarment ? [] : aiStylistHistory
-    if (aiStylistHistoryGarment !== activeGarment) {
+    const freshHistory = aiStylistHistoryGarment !== effectiveGarment ? [] : aiStylistHistory
+    if (aiStylistHistoryGarment !== effectiveGarment) {
       setAiStylistHistory([])
-      setAiStylistHistoryGarment(activeGarment)
+      setAiStylistHistoryGarment(effectiveGarment)
     }
 
     setAiStylistLoading(true)
@@ -506,21 +507,21 @@ export default function DesignStudio() {
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor, history: freshHistory }),
+        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: effectiveGarment, color: activeColor, history: freshHistory }),
       })
       if (res.ok) {
         const data = await res.json()
         setAiStylistResponse(data)
         if (data.manufacturingNotes) setAiStylistTip(data.manufacturingNotes)
         setAiStylistHistory(prev => {
-          const base = aiStylistHistoryGarment !== activeGarment ? [] : prev
+          const base = aiStylistHistoryGarment !== effectiveGarment ? [] : prev
           return [
             ...base,
             { role: "user", content: message },
             { role: "assistant", content: data.message || "" },
           ]
         })
-        setAiStylistHistoryGarment(activeGarment)
+        setAiStylistHistoryGarment(effectiveGarment)
       } else {
         setAiError("Stylist unavailable — try again")
       }
