@@ -150,6 +150,7 @@ export default function DesignStudio() {
   const [aiProgressPct, setAiProgressPct]       = useState(0)
   const [aiTipIdx, setAiTipIdx]                 = useState(0)
   const [aiRetryCountdown, setAiRetryCountdown] = useState(null)
+  const [aiStylistHistory, setAiStylistHistory] = useState([])
 
   // Hardware suggestion state
   const [hwSuggestion, setHwSuggestion]   = useState("")
@@ -482,6 +483,7 @@ export default function DesignStudio() {
     setAiStylistLoading(false)
     setAiError(null)
     setAiRetryCountdown(null)
+    setAiStylistHistory([])
     setAiModalOpen(true)
   }
 
@@ -495,12 +497,17 @@ export default function DesignStudio() {
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor }),
+        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor, history: aiStylistHistory }),
       })
       if (res.ok) {
         const data = await res.json()
         setAiStylistResponse(data)
-        if (data.tip) setAiStylistTip(data.tip)
+        if (data.manufacturingNotes) setAiStylistTip(data.manufacturingNotes)
+        setAiStylistHistory(prev => [
+          ...prev,
+          { role: "user", content: message },
+          { role: "assistant", content: data.message || "" },
+        ])
       } else {
         setAiError("Stylist unavailable — try again")
       }
@@ -928,7 +935,6 @@ export default function DesignStudio() {
                         { id: "hoodie", label: "Hoodie" },
                         { id: "tee", label: "Tee" },
                         { id: "shorts", label: "Shorts" },
-                        { id: "bomber", label: "Bomber" },
                       ].map((g) => (
                         <button
                           key={g.id}
@@ -1316,60 +1322,43 @@ export default function DesignStudio() {
                   <div className="ds-chat-response">
                     <div className="ds-chat-bubble">
                       <p className="ds-chat-message">{aiStylistResponse.message}</p>
-                      {aiStylistResponse.tip && (
-                        <p className="ds-chat-tip">✦ TIP: {aiStylistResponse.tip}</p>
+                      {aiStylistResponse.manufacturingNotes && (
+                        <p className="ds-chat-tip">✦ {aiStylistResponse.manufacturingNotes}</p>
                       )}
                     </div>
-
-                    {aiStylistResponse.needs_more_info ? (
-                      <>
-                        {aiStylistResponse.follow_up_question && (
-                          <p className="ds-follow-up-label">{aiStylistResponse.follow_up_question}</p>
+                    {(aiStylistResponse.manufacturability !== undefined || aiStylistResponse.estimatedCost !== undefined) && (
+                      <div className="ds-stylist-badges">
+                        {aiStylistResponse.manufacturability !== undefined && (
+                          <span className="ds-badge ds-badge-mfg">
+                            {aiStylistResponse.manufacturability}/10 MANUFACTURABLE
+                          </span>
                         )}
-                        <textarea
-                          className="ds-modal-input ds-modal-textarea"
-                          placeholder="Your answer..."
-                          value={aiFollowUpInput}
-                          onChange={e => setAiFollowUpInput(e.target.value)}
-                          rows={3}
-                          autoFocus
-                        />
-                        <div className="ds-modal-nav">
-                          <button
-                            className="ds-modal-cancel-btn"
-                            onClick={() => { setAiStylistResponse(null); setAiShowCustom(false) }}
-                          >
-                            ← START OVER
-                          </button>
-                          <button
-                            className="ds-modal-gen-btn"
-                            onClick={() => callStylist(aiFollowUpInput)}
-                            disabled={!aiFollowUpInput.trim()}
-                          >
-                            SEND →
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="ds-modal-nav">
-                        <button
-                          className="ds-modal-cancel-btn"
-                          onClick={() => { setAiStylistResponse(null); setAiShowCustom(false) }}
-                        >
-                          REFINE IT
-                        </button>
-                        <button
-                          className="ds-modal-gen-btn"
-                          onClick={() => {
-                            setAiPrompt(aiStylistResponse.improved_prompt || "")
-                            setAiStylistTip(aiStylistResponse.tip || null)
-                            setAiStep("builder")
-                          }}
-                        >
-                          USE THIS PROMPT →
-                        </button>
+                        {aiStylistResponse.estimatedCost !== undefined && (
+                          <span className="ds-badge ds-badge-cost">
+                            EST. ${aiStylistResponse.estimatedCost}
+                          </span>
+                        )}
                       </div>
                     )}
+
+                    <div className="ds-modal-nav">
+                      <button
+                        className="ds-modal-cancel-btn"
+                        onClick={() => { setAiStylistResponse(null); setAiShowCustom(false) }}
+                      >
+                        REFINE IT
+                      </button>
+                      <button
+                        className="ds-modal-gen-btn"
+                        onClick={() => {
+                          setAiPrompt(aiStylistResponse.renderPrompt || "")
+                          setAiStylistTip(aiStylistResponse.manufacturingNotes || null)
+                          setAiStep("builder")
+                        }}
+                      >
+                        USE THIS PROMPT →
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

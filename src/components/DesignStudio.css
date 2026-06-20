@@ -1614,3 +1614,33 @@
   color: #555;
   margin: 0;
 }
+
+/* ── STYLIST RESPONSE BADGES ──────────────────────────────── */
+.ds-stylist-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.ds-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.ds-badge-mfg {
+  background: #e8ff00;
+  color: #0a0a0a;
+  font-weight: 600;
+}
+
+.ds-badge-cost {
+  border: 1px solid #e8ff00;
+  color: #e8ff00;
+  background: transparent;
+}
