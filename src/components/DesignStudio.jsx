@@ -151,6 +151,7 @@ export default function DesignStudio() {
   const [aiTipIdx, setAiTipIdx]                 = useState(0)
   const [aiRetryCountdown, setAiRetryCountdown] = useState(null)
   const [aiStylistHistory, setAiStylistHistory] = useState([])
+  const [aiStylistHistoryGarment, setAiStylistHistoryGarment] = useState(null)
 
   // Hardware suggestion state
   const [hwSuggestion, setHwSuggestion]   = useState("")
@@ -484,11 +485,19 @@ export default function DesignStudio() {
     setAiError(null)
     setAiRetryCountdown(null)
     setAiStylistHistory([])
+    setAiStylistHistoryGarment(activeGarment)
     setAiModalOpen(true)
   }
 
   // Call the AI stylist
   const callStylist = async (message) => {
+    // If the garment changed since the last stylist session, start fresh
+    const freshHistory = aiStylistHistoryGarment !== activeGarment ? [] : aiStylistHistory
+    if (aiStylistHistoryGarment !== activeGarment) {
+      setAiStylistHistory([])
+      setAiStylistHistoryGarment(activeGarment)
+    }
+
     setAiStylistLoading(true)
     setAiStylistResponse(null)
     setAiError(null)
@@ -497,17 +506,21 @@ export default function DesignStudio() {
       const res = await fetch(`${API_BASE}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": token },
-        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor, history: aiStylistHistory }),
+        body: JSON.stringify({ feature: "review_prompt", prompt: message, garment: activeGarment, color: activeColor, history: freshHistory }),
       })
       if (res.ok) {
         const data = await res.json()
         setAiStylistResponse(data)
         if (data.manufacturingNotes) setAiStylistTip(data.manufacturingNotes)
-        setAiStylistHistory(prev => [
-          ...prev,
-          { role: "user", content: message },
-          { role: "assistant", content: data.message || "" },
-        ])
+        setAiStylistHistory(prev => {
+          const base = aiStylistHistoryGarment !== activeGarment ? [] : prev
+          return [
+            ...base,
+            { role: "user", content: message },
+            { role: "assistant", content: data.message || "" },
+          ]
+        })
+        setAiStylistHistoryGarment(activeGarment)
       } else {
         setAiError("Stylist unavailable — try again")
       }
@@ -840,14 +853,13 @@ export default function DesignStudio() {
                   {!view360Loading && !view360Active && (
                     <>
                       {customMode ? (
-                        // Custom mode: no product photography — just a color swatch canvas
+                        // Custom mode: no product photography — color is metadata only, never applied to canvas
                         (() => {
-                          const swatchColor = CUSTOM_COLOR_MAP[customColor.toLowerCase().trim()] || "#4a4a4a"
                           const previewDesign = customThumbs.length > 0
                             ? customThumbs[customThumbs.length - 1]
                             : (activeThumbIdx !== null && thumbnails[activeThumbIdx] ? thumbnails[activeThumbIdx] : null)
                           return (
-                            <div className="ds-custom-preview-swatch" style={{ backgroundColor: swatchColor }}>
+                            <div className="ds-custom-preview-swatch">
                               {previewDesign && (
                                 <img
                                   src={previewDesign.url}
