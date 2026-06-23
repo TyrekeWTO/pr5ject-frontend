@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
+import { startSubscribe } from "../utils/subscribe"
 import "./DesignStudio.css"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
@@ -147,6 +148,7 @@ export default function DesignStudio() {
   const [aiStylistTip, setAiStylistTip]         = useState(null)
   const [aiLoading, setAiLoading]               = useState(false)
   const [aiError, setAiError]                   = useState(null)
+  const [aiUpgradePrompt, setAiUpgradePrompt]   = useState(null) // "upgrade_required" | "monthly_limit" | null
   const [aiProgressPct, setAiProgressPct]       = useState(0)
   const [aiTipIdx, setAiTipIdx]                 = useState(0)
   const [aiRetryCountdown, setAiRetryCountdown] = useState(null)
@@ -484,6 +486,7 @@ export default function DesignStudio() {
     setAiStylistTip(null)
     setAiStylistLoading(false)
     setAiError(null)
+    setAiUpgradePrompt(null)
     setAiRetryCountdown(null)
     setAiStylistHistory([])
     setAiStylistHistoryGarment(effectiveGarment)
@@ -539,20 +542,25 @@ export default function DesignStudio() {
     track("studio_ai_generate", { garment: activeGarment })
     setAiLoading(true)
     setAiError(null)
+    setAiUpgradePrompt(null)
     setAiRetryCountdown(null)
     try {
       const token = await getIdToken()
       if (!token) { window.location.href = "/join"; return }
       const res = await fetch(AI_GENERATE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": token },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ prompt, garment: activeGarment, color: activeColor, styleContext: STYLE_CONTEXT }),
       })
       const data = await res.json()
 
       if (!res.ok) {
         const errType = data?.error || "unknown"
-        if (errType === "throttled") {
+        if (errType === "upgrade_required") {
+          setAiUpgradePrompt("upgrade_required")
+        } else if (errType === "monthly_limit") {
+          setAiUpgradePrompt("monthly_limit")
+        } else if (errType === "throttled") {
           setAiError("Too many requests — wait 5 seconds and try again")
           setAiRetryCountdown(5)
         } else if (errType === "bedrock_auth") {
@@ -1429,6 +1437,18 @@ export default function DesignStudio() {
                   </div>
                 )}
 
+                {aiUpgradePrompt === "upgrade_required" && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">You've used your 3 free generations. Upgrade for $15/month to keep generating.</p>
+                    <button className="ds-modal-gen-btn" onClick={startSubscribe}>UPGRADE $15/MO</button>
+                  </div>
+                )}
+                {aiUpgradePrompt === "monthly_limit" && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">You've hit your monthly generation limit (150). It resets next month.</p>
+                  </div>
+                )}
+
                 <div className="ds-modal-nav">
                   <button className="ds-modal-cancel-btn" onClick={() => setAiStep("stylist")}>
                     ← Back to Stylist
@@ -1469,6 +1489,18 @@ export default function DesignStudio() {
                         {aiRetryCountdown > 0 ? `Auto-retry in ${aiRetryCountdown}s...` : "Retrying..."}
                       </p>
                     )}
+                  </div>
+                )}
+
+                {aiUpgradePrompt === "upgrade_required" && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">You've used your 3 free generations. Upgrade for $15/month to keep generating.</p>
+                    <button className="ds-modal-gen-btn" onClick={startSubscribe}>UPGRADE $15/MO</button>
+                  </div>
+                )}
+                {aiUpgradePrompt === "monthly_limit" && (
+                  <div className="ds-modal-error-box">
+                    <p className="ds-modal-error">You've hit your monthly generation limit (150). It resets next month.</p>
                   </div>
                 )}
 

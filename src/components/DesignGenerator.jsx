@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getIdToken } from "../auth/cognito"
 import { track } from "../utils/track"
+import { startSubscribe } from "../utils/subscribe"
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://lyizxn1vgk.execute-api.us-east-1.amazonaws.com/prod"
 const AI_GENERATE_URL = import.meta.env.VITE_AI_GENERATE_URL || `${API_BASE}/ai/generate`
@@ -10,6 +11,7 @@ export default function DesignGenerator() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [upgradePrompt, setUpgradePrompt] = useState(null) // "upgrade_required" | "monthly_limit" | null
 
   useEffect(() => { track("page_view", { page: "generate" }) }, [])
 
@@ -17,6 +19,7 @@ export default function DesignGenerator() {
     if (!prompt.trim() || loading) return
     setLoading(true)
     setError(null)
+    setUpgradePrompt(null)
     setResult(null)
     try {
       const token = await getIdToken()
@@ -32,8 +35,12 @@ export default function DesignGenerator() {
         signal: controller.signal,
       })
       clearTimeout(timeoutId)
-      if (!res.ok) throw new Error("AI request failed")
       const data = await res.json()
+      if (!res.ok) {
+        if (data.error === "upgrade_required") { setUpgradePrompt("upgrade_required"); return }
+        if (data.error === "monthly_limit") { setUpgradePrompt("monthly_limit"); return }
+        throw new Error("AI request failed")
+      }
       setResult(data)
     } catch (err) {
       setError(err.message || "Something went wrong")
@@ -78,6 +85,16 @@ export default function DesignGenerator() {
           </div>
 
           {error && <p className="auth-error">{error}</p>}
+
+          {upgradePrompt === "upgrade_required" && (
+            <div>
+              <p className="auth-error">You've used your 3 free generations. Upgrade for $15/month to keep generating.</p>
+              <button className="ai-gen-btn" onClick={startSubscribe}>UPGRADE $15/MO</button>
+            </div>
+          )}
+          {upgradePrompt === "monthly_limit" && (
+            <p className="auth-error">You've hit your monthly generation limit (150). It resets next month.</p>
+          )}
 
           {result && (
             <div className="trends-card">
